@@ -1,0 +1,153 @@
+tags:
+  - name: Auth
+    description: Authentication API
+paths:
+  /api/auth/signup:
+    post:
+      summary: Register a new user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullname, email, password]
+              properties:
+                fullname:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        201:
+          description: Sign-up successful
+  /api/auth/signin:
+    post:
+      summary: Login user
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: Sign-in successful
+  /api/auth/forgot-password:
+    post:
+      summary: Request password reset code
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+      responses:
+        200:
+          description: Reset code sent
+  /api/auth/check-reset-code:
+    post:
+      summary: Verify reset code
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, reset_code]
+              properties:
+                email:
+                  type: string
+                reset_code:
+                  type: string
+      responses:
+        200:
+          description: Reset code verified successfully
+  /api/auth/reset-password:
+    post:
+      summary: Reset password
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, temporary_token]
+              properties:
+                password:
+                  type: string
+                temporary_token:
+                  type: string
+      responses:
+        200:
+          description: Password reset successfully
+  /api/auth/refresh-token:
+    post:
+      summary: Refresh access token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        200:
+          description: Token refreshed successfully
+  /api/auth/me:
+    get:
+      summary: Get current logged in user
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Current user info
+  /api/auth/logout:
+    post:
+      summary: Logout user
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Logged out successfully
+  /api/auth/delete-account:
+    delete:
+      summary: Delete user account
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+      responses:
+        200:
+          description: Account deleted successfully
