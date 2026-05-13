@@ -1,6 +1,6 @@
 import ApiError from '../utils/error.js';
 import db from '../lib/db/database.js';
-import { generateTokens } from '../utils/jwt.js';
+import { generateTokens, generateResetToken } from '../utils/jwt.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
@@ -16,6 +16,8 @@ const validateEmail = (email) => {
 const validatePassword = (password) => {
     if (password.length < 8)
         return 'Password must be at least 8 characters long.';
+    if (password.length > 128)
+        return 'Password must not exceed 128 characters.';
     if (!/[A-Z]/.test(password))
         return 'Password must contain at least one uppercase letter.';
     if (!/[a-z]/.test(password))
@@ -47,7 +49,7 @@ export const signUp = async (req, res) => {
         if (existing.length > 0)
             throw ApiError.conflict('Email already exists.');
 
-        const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
+        const hashedPassword = await bcrypt.hash(password, 10);
 
         const { rows } = await db.query(
             'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, total_balance, monthly_income',
@@ -85,10 +87,10 @@ export const signIn = async (req, res) => {
         );
         const existingUser = rows[0];
 
+        // Always run bcrypt to prevent user-enumeration via timing
         const dummyHash = '$2a$10$vI8aWBnW3fID.ZQ4/zo1G.q1lRps.9cGLcZEiGDMVr5yUP1KUOYTa';
-        const isPasswordValid = existingUser
-            ? await bcrypt.compare(password, existingUser.password)
-            : (await bcrypt.compare(password, dummyHash), false);
+        const hashToCheck = existingUser?.password ?? dummyHash;
+        const isPasswordValid = await bcrypt.compare(password, hashToCheck);
 
         if (!existingUser || !isPasswordValid)
             throw ApiError.unauthorized('Invalid email or password.');
@@ -130,9 +132,10 @@ export const forgotPassword = async (req, res) => {
             return;
         }
 
-        const resetCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+        // 32-bit entropy (8 hex chars) — brute-force resistant
+        const resetCode = crypto.randomBytes(4).toString('hex').toUpperCase();
         const resetCodeExpires = new Date(Date.now() + 15 * 60 * 1000);
-        const hashedResetCode = await bcrypt.hash(resetCode, await bcrypt.genSalt(10));
+        const hashedResetCode = await bcrypt.hash(resetCode, 10);
 
         await db.query(
             'UPDATE users SET reset_code = $1, reset_code_expires = $2 WHERE id = $3',
@@ -194,11 +197,8 @@ export const checkResetCode = async (req, res) => {
             [user.id],
         );
 
-        const temporary_token = jwt.sign(
-            { userId: user.id, email: user.email, type: 'reset' },
-            process.env.JWT_SECRET_KEY,
-            { expiresIn: '5m' },
-        );
+        // Signed with dedicated reset secret — cannot be forged using access tokens
+        const temporary_token = generateResetToken(user);
 
         res.status(200).json({
             success: true,
@@ -223,7 +223,7 @@ export const resetPassword = async (req, res) => {
 
         let decoded;
         try {
-            decoded = jwt.verify(temporary_token, process.env.JWT_SECRET_KEY);
+            decoded = jwt.verify(temporary_token, process.env.JWT_RESET_SECRET_KEY);
         } catch (err) {
             if (err instanceof jwt.TokenExpiredError)
                 throw ApiError.unauthorized('Temporary token has expired.');
@@ -244,7 +244,7 @@ export const resetPassword = async (req, res) => {
         if (isSamePassword)
             throw ApiError.badRequest('New password must be different from the current password.');
 
-        const hashedPassword = await bcrypt.hash(password, await bcrypt.genSalt(10));
+        const hashedPassword = await bcrypt.hash(password, 10);
         await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, user.id]);
 
         res.status(200).json({ success: true, message: 'Password reset successfully' });

@@ -13,3 +13,10 @@ export const generateTokens = (user) => {
     );
     return { accessToken, refreshToken };
 };
+
+export const generateResetToken = (user) =>
+    jwt.sign(
+        { userId: user.id, email: user.email, type: 'reset' },
+        process.env.JWT_RESET_SECRET_KEY,
+        { expiresIn: '5m' },
+    );

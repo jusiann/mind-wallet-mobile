@@ -67,7 +67,8 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-    console.error('Global error handler:', err);
+    if (process.env.NODE_ENV !== 'production') console.error('Global error handler:', err);
+    else console.error(`[ERROR] ${err.statusCode || 500} - ${err.message}`);
     const statusCode = err.statusCode || 500;
     const message = process.env.NODE_ENV === 'production' && statusCode === 500
         ? 'Internal server error'
