@@ -5,6 +5,7 @@ import cors from 'cors';
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import { connectDB } from './src/lib/db/database.js';
+import { initDB } from './src/lib/db/init.js';
 import authRoutes from './src/routes/auth.routes.js';
 
 const PORT = process.env.PORT || 3000;
@@ -80,4 +81,5 @@ app.listen(PORT, async () => {
     const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
     console.log(`[SERVER - ${time}] Started on port ${PORT}`);
     await connectDB();
+    await initDB();
 });

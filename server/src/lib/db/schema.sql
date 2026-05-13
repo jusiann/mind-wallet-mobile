@@ -1,5 +1,3 @@
--- Mind Wallet Database Schema
-
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -36,10 +34,11 @@ CREATE TABLE IF NOT EXISTS goals (
     target_amount NUMERIC(12, 2) NOT NULL,
     current_amount NUMERIC(12, 2) DEFAULT 0.00,
     deadline DATE NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'COMPLETED', 'PAUSED')),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Seed default categories
 INSERT INTO categories (name, is_essential) VALUES
     ('Food & Groceries', TRUE),
     ('Eating Out', FALSE),
@@ -52,3 +51,26 @@ INSERT INTO categories (name, is_essential) VALUES
     ('Subscriptions', FALSE),
     ('Other', FALSE)
 ON CONFLICT (name) DO NOTHING;
+
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
+    CHECK (status IN ('ACTIVE', 'COMPLETED', 'PAUSED'));
+
+ALTER TABLE goals ADD COLUMN IF NOT EXISTS
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id
+    ON transactions(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_timestamp
+    ON transactions(transaction_timestamp);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_user_ts
+    ON transactions(user_id, transaction_timestamp DESC);
+
+CREATE INDEX IF NOT EXISTS idx_goals_user_id
+    ON goals(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_goals_user_status
+    ON goals(user_id, status);
