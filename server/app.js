@@ -7,6 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import { connectDB } from './src/lib/db/database.js';
 import { initDB } from './src/lib/db/init.js';
 import authRoutes from './src/routes/auth.routes.js';
+import transactionRoutes from './src/routes/transaction.routes.js';
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -62,6 +63,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/transactions', transactionRoutes);
 
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'Route not found' });
