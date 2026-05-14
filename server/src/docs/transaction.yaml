@@ -1,0 +1,203 @@
+tags:
+  - name: Transactions
+    description: Transaction management API
+paths:
+  /api/transactions:
+    post:
+      summary: Create a new transaction
+      tags: [Transactions]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, type, transaction_timestamp]
+              properties:
+                amount:
+                  type: number
+                  description: Positive amount with at most 2 decimal places
+                type:
+                  type: string
+                  enum: [EXPENSE, INCOME]
+                  description: Transaction type (EXPENSE or INCOME)
+                category_id:
+                  type: integer
+                  description: Positive integer representing the category
+                description:
+                  type: string
+                  maxLength: 500
+                  description: Transaction description
+                transaction_timestamp:
+                  type: string
+                  format: date-time
+                  description: ISO 8601 date string
+      responses:
+        201:
+          description: Transaction created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  transaction:
+                    type: object
+        400:
+          description: Bad request (validation errors)
+        404:
+          description: Category not found
+        500:
+          description: Server error
+    get:
+      summary: Get user transactions with optional filters
+      tags: [Transactions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+          description: Max number of records to return (max 100)
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [EXPENSE, INCOME]
+          description: Filter by transaction type
+        - in: query
+          name: category_id
+          schema:
+            type: integer
+          description: Filter by category ID
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date-time
+          description: Filter from this timestamp
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date-time
+          description: Filter up to this timestamp
+      responses:
+        200:
+          description: List of transactions and total count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  transactions:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+        400:
+          description: Invalid query parameters
+        500:
+          description: Server error
+
+  /api/transactions/{id}:
+    get:
+      summary: Get a specific transaction by ID
+      tags: [Transactions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Transaction retrieved successfully
+        400:
+          description: Invalid ID
+        403:
+          description: Forbidden (Not owner of transaction)
+        404:
+          description: Transaction not found
+        500:
+          description: Server error
+    put:
+      summary: Update a specific transaction
+      tags: [Transactions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount:
+                  type: number
+                category_id:
+                  type: integer
+                  nullable: true
+                description:
+                  type: string
+                  maxLength: 500
+                transaction_timestamp:
+                  type: string
+                  format: date-time
+      responses:
+        200:
+          description: Transaction updated successfully
+        400:
+          description: Invalid input or missing fields
+        403:
+          description: Forbidden (Not owner of transaction)
+        404:
+          description: Transaction/Category not found
+        500:
+          description: Server error
+    delete:
+      summary: Delete a specific transaction
+      tags: [Transactions]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Transaction deleted successfully
+        400:
+          description: Invalid ID
+        403:
+          description: Forbidden (Not owner of transaction)
+        404:
+          description: Transaction not found
+        500:
+          description: Server error

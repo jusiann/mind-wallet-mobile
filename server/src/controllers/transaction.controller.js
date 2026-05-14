@@ -31,13 +31,16 @@ export const createTransaction = async (req, res) => {
             throw ApiError.badRequest('amount, type, and transaction_timestamp are required.');
 
         const amountError = validateAmount(amount);
-        if (amountError) throw ApiError.badRequest(amountError);
+        if (amountError) 
+            throw ApiError.badRequest(amountError);
 
         const typeError = validateType(type);
-        if (typeError) throw ApiError.badRequest(typeError);
+        if (typeError) 
+            throw ApiError.badRequest(typeError);
 
         const tsError = validateTimestamp(transaction_timestamp);
-        if (tsError) throw ApiError.badRequest(tsError);
+        if (tsError) 
+            throw ApiError.badRequest(tsError);
 
         if (description && description.length > 500)
             throw ApiError.badRequest('Description must not exceed 500 characters.');
@@ -81,7 +84,10 @@ export const createTransaction = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ success: false, error: error.message || 'Failed to create transaction' });
+        res.status(statusCode).json({ 
+            success: false, 
+            error: error.message || 'Failed to create transaction' 
+        });
     }
 };
 
@@ -96,7 +102,8 @@ export const getTransactions = async (req, res) => {
 
         if (type) {
             const typeError = validateType(type);
-            if (typeError) throw ApiError.badRequest(typeError);
+            if (typeError) 
+                throw ApiError.badRequest(typeError);
         }
 
         const conditions = ['user_id = $1'];
@@ -116,13 +123,16 @@ export const getTransactions = async (req, res) => {
         }
         if (start_date) {
             const tsError = validateTimestamp(start_date);
-            if (tsError) throw ApiError.badRequest('start_date must be a valid ISO date string.');
+            if (tsError) 
+                throw ApiError.badRequest('start_date must be a valid ISO date string.');
             conditions.push(`transaction_timestamp >= $${idx++}`);
             params.push(new Date(start_date));
         }
         if (end_date) {
             const tsError = validateTimestamp(end_date);
-            if (tsError) throw ApiError.badRequest('end_date must be a valid ISO date string.');
+            if (tsError) 
+                throw ApiError.badRequest('end_date must be a valid ISO date string.');
+            
             conditions.push(`transaction_timestamp <= $${idx++}`);
             params.push(new Date(end_date));
         }
@@ -148,7 +158,10 @@ export const getTransactions = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ success: false, error: error.message || 'Failed to get transactions' });
+        res.status(statusCode).json({ 
+            success: false, 
+            error: error.message || 'Failed to get transactions' 
+        });
     }
 };
 
@@ -164,15 +177,22 @@ export const getTransaction = async (req, res) => {
             [parsedId],
         );
         const transaction = rows[0];
-        if (!transaction) throw ApiError.notFound('Transaction not found.');
+        if (!transaction) 
+            throw ApiError.notFound('Transaction not found.');
 
         if (transaction.user_id !== req.user.id)
             throw ApiError.forbidden('You do not have permission to access this transaction.');
 
-        res.status(200).json({ success: true, transaction });
+        res.status(200).json({ 
+            success: true, 
+            transaction 
+        });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ success: false, error: error.message || 'Failed to get transaction' });
+        res.status(statusCode).json({ 
+            success: false, 
+            error: error.message || 'Failed to get transaction' 
+        });
     }
 };
 
@@ -188,7 +208,8 @@ export const updateTransaction = async (req, res) => {
             [parsedId],
         );
         const transaction = existing[0];
-        if (!transaction) throw ApiError.notFound('Transaction not found.');
+        if (!transaction) 
+            throw ApiError.notFound('Transaction not found.');
 
         if (transaction.user_id !== req.user.id)
             throw ApiError.forbidden('You do not have permission to update this transaction.');
@@ -204,7 +225,9 @@ export const updateTransaction = async (req, res) => {
 
         if (amount !== undefined) {
             const amountError = validateAmount(amount);
-            if (amountError) throw ApiError.badRequest(amountError);
+            if (amountError) 
+                throw ApiError.badRequest(amountError);
+            
             updates.push(`amount = $${idx++}`);
             params.push(parseFloat(amount));
         }
@@ -216,12 +239,14 @@ export const updateTransaction = async (req, res) => {
                 const parsedCategoryId = parseInt(category_id, 10);
                 if (isNaN(parsedCategoryId) || parsedCategoryId <= 0)
                     throw ApiError.badRequest('category_id must be a positive integer.');
+                
                 const { rows: catRows } = await db.query(
                     'SELECT id FROM categories WHERE id = $1 LIMIT 1',
                     [parsedCategoryId],
                 );
                 if (catRows.length === 0)
                     throw ApiError.notFound('Category not found.');
+                
                 updates.push(`category_id = $${idx++}`);
                 params.push(parsedCategoryId);
             }
@@ -234,7 +259,9 @@ export const updateTransaction = async (req, res) => {
         }
         if (transaction_timestamp !== undefined) {
             const tsError = validateTimestamp(transaction_timestamp);
-            if (tsError) throw ApiError.badRequest(tsError);
+            if (tsError) 
+                throw ApiError.badRequest(tsError);
+            
             updates.push(`transaction_timestamp = $${idx++}`);
             params.push(new Date(transaction_timestamp));
         }
@@ -255,7 +282,10 @@ export const updateTransaction = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ success: false, error: error.message || 'Failed to update transaction' });
+        res.status(statusCode).json({ 
+            success: false, 
+            error: error.message || 'Failed to update transaction' 
+        });
     }
 };
 
@@ -271,7 +301,8 @@ export const deleteTransaction = async (req, res) => {
             [parsedId],
         );
         const transaction = existing[0];
-        if (!transaction) throw ApiError.notFound('Transaction not found.');
+        if (!transaction) 
+            throw ApiError.notFound('Transaction not found.');
 
         if (transaction.user_id !== req.user.id)
             throw ApiError.forbidden('You do not have permission to delete this transaction.');
@@ -281,9 +312,15 @@ export const deleteTransaction = async (req, res) => {
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[TRANSACTION - ${time}] User ${req.user.id} deleted transaction ${parsedId}`);
 
-        res.status(200).json({ success: true, message: 'Transaction deleted successfully.' });
+        res.status(200).json({ 
+            success: true, 
+            message: 'Transaction deleted successfully.' 
+        });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ success: false, error: error.message || 'Failed to delete transaction' });
+        res.status(statusCode).json({ 
+            success: false, 
+            error: error.message || 'Failed to delete transaction' 
+        });
     }
 };
