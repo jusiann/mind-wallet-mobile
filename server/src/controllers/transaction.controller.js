@@ -25,6 +25,21 @@ const validateTimestamp = (ts) => {
     return null;
 };
 
+export const getCategories = async (_req, res) => {
+    try {
+        const { rows } = await db.query('SELECT id, name, is_essential FROM categories ORDER BY id ASC');
+        res.status(200).json({ 
+            success: true, 
+            categories: rows 
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to get categories' 
+        });
+    }
+};
+
 export const createTransaction = async (req, res) => {
     try {
         const { amount, type, category_id, description, transaction_timestamp } = req.body;
@@ -33,15 +48,15 @@ export const createTransaction = async (req, res) => {
             throw ApiError.badRequest('amount, type, and transaction_timestamp are required.');
 
         const amountError = validateAmount(amount);
-        if (amountError) 
+        if (amountError)
             throw ApiError.badRequest(amountError);
 
         const typeError = validateType(type);
-        if (typeError) 
+        if (typeError)
             throw ApiError.badRequest(typeError);
 
         const tsError = validateTimestamp(transaction_timestamp);
-        if (tsError) 
+        if (tsError)
             throw ApiError.badRequest(tsError);
 
         if (description && description.length > 500)
@@ -49,17 +64,13 @@ export const createTransaction = async (req, res) => {
 
         let categoryMeta = null;
         if (category_id !== undefined && category_id !== null) {
-            const parsedCategoryId = parseInt(category_id, 10);
-            if (isNaN(parsedCategoryId) || parsedCategoryId <= 0)
-                throw ApiError.badRequest('category_id must be a positive integer.');
-
             const { rows: catRows } = await db.query(
                 'SELECT id, name, is_essential FROM categories WHERE id = $1 LIMIT 1',
-                [parsedCategoryId],
+                [category_id],
             );
-            if (catRows.length === 0)
+            categoryMeta = catRows[0] ?? null;
+            if (!categoryMeta)
                 throw ApiError.notFound('Category not found.');
-            categoryMeta = catRows[0];
         }
 
         let guardWarning = null;
@@ -110,9 +121,9 @@ export const createTransaction = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Failed to create transaction' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Failed to create transaction',
         });
     }
 };
@@ -128,7 +139,7 @@ export const getTransactions = async (req, res) => {
 
         if (type) {
             const typeError = validateType(type);
-            if (typeError) 
+            if (typeError)
                 throw ApiError.badRequest(typeError);
         }
 
@@ -141,24 +152,24 @@ export const getTransactions = async (req, res) => {
             params.push(type);
         }
         if (category_id) {
-            const parsedCategoryId = parseInt(category_id, 10);
-            if (isNaN(parsedCategoryId) || parsedCategoryId <= 0)
-                throw ApiError.badRequest('category_id must be a positive integer.');
+            const { rows: catCheck } = await db.query(
+                'SELECT id FROM categories WHERE id = $1 LIMIT 1',
+                [category_id],
+            );
+            if (!catCheck[0])
+                throw ApiError.badRequest('Invalid category_id.');
             conditions.push(`category_id = $${idx++}`);
-            params.push(parsedCategoryId);
+            params.push(category_id);
         }
         if (start_date) {
-            const tsError = validateTimestamp(start_date);
-            if (tsError) 
+            if (validateTimestamp(start_date))
                 throw ApiError.badRequest('start_date must be a valid ISO date string.');
             conditions.push(`transaction_timestamp >= $${idx++}`);
             params.push(new Date(start_date));
         }
         if (end_date) {
-            const tsError = validateTimestamp(end_date);
-            if (tsError) 
+            if (validateTimestamp(end_date))
                 throw ApiError.badRequest('end_date must be a valid ISO date string.');
-            
             conditions.push(`transaction_timestamp <= $${idx++}`);
             params.push(new Date(end_date));
         }
@@ -184,9 +195,9 @@ export const getTransactions = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Failed to get transactions' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Failed to get transactions',
         });
     }
 };
@@ -203,114 +214,18 @@ export const getTransaction = async (req, res) => {
             [parsedId],
         );
         const transaction = rows[0];
-        if (!transaction) 
+        if (!transaction)
             throw ApiError.notFound('Transaction not found.');
 
         if (transaction.user_id !== req.user.id)
             throw ApiError.forbidden('You do not have permission to access this transaction.');
 
-        res.status(200).json({ 
-            success: true, 
-            transaction 
-        });
+        res.status(200).json({ success: true, transaction });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Failed to get transaction' 
-        });
-    }
-};
-
-export const updateTransaction = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const parsedId = parseInt(id, 10);
-        if (isNaN(parsedId) || parsedId <= 0)
-            throw ApiError.badRequest('Invalid transaction ID.');
-
-        const { rows: existing } = await db.query(
-            'SELECT * FROM transactions WHERE id = $1 LIMIT 1',
-            [parsedId],
-        );
-        const transaction = existing[0];
-        if (!transaction) 
-            throw ApiError.notFound('Transaction not found.');
-
-        if (transaction.user_id !== req.user.id)
-            throw ApiError.forbidden('You do not have permission to update this transaction.');
-
-        const { amount, category_id, description, transaction_timestamp } = req.body;
-
-        if (amount === undefined && category_id === undefined && description === undefined && transaction_timestamp === undefined)
-            throw ApiError.badRequest('At least one field must be provided for update.');
-
-        const updates = [];
-        const params = [];
-        let idx = 1;
-
-        if (amount !== undefined) {
-            const amountError = validateAmount(amount);
-            if (amountError) 
-                throw ApiError.badRequest(amountError);
-            
-            updates.push(`amount = $${idx++}`);
-            params.push(parseFloat(amount));
-        }
-        if (category_id !== undefined) {
-            if (category_id === null) {
-                updates.push(`category_id = $${idx++}`);
-                params.push(null);
-            } else {
-                const parsedCategoryId = parseInt(category_id, 10);
-                if (isNaN(parsedCategoryId) || parsedCategoryId <= 0)
-                    throw ApiError.badRequest('category_id must be a positive integer.');
-                
-                const { rows: catRows } = await db.query(
-                    'SELECT id FROM categories WHERE id = $1 LIMIT 1',
-                    [parsedCategoryId],
-                );
-                if (catRows.length === 0)
-                    throw ApiError.notFound('Category not found.');
-                
-                updates.push(`category_id = $${idx++}`);
-                params.push(parsedCategoryId);
-            }
-        }
-        if (description !== undefined) {
-            if (description !== null && description.length > 500)
-                throw ApiError.badRequest('Description must not exceed 500 characters.');
-            updates.push(`description = $${idx++}`);
-            params.push(description ?? null);
-        }
-        if (transaction_timestamp !== undefined) {
-            const tsError = validateTimestamp(transaction_timestamp);
-            if (tsError) 
-                throw ApiError.badRequest(tsError);
-            
-            updates.push(`transaction_timestamp = $${idx++}`);
-            params.push(new Date(transaction_timestamp));
-        }
-
-        params.push(parsedId, req.user.id);
-
-        const { rows } = await db.query(
-            `UPDATE transactions SET ${updates.join(', ')}
-             WHERE id = $${idx++} AND user_id = $${idx}
-             RETURNING *`,
-            params,
-        );
-
-        res.status(200).json({
-            success: true,
-            message: 'Transaction updated successfully.',
-            transaction: rows[0],
-        });
-    } catch (error) {
-        const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Failed to update transaction' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Failed to get transaction',
         });
     }
 };
@@ -340,12 +255,12 @@ export const exportTransactions = async (req, res) => {
 
         const sheet = workbook.addWorksheet('Transactions');
         sheet.columns = [
-            { header: 'ID',          key: 'id',          width: 8  },
-            { header: 'Date',        key: 'date',         width: 22 },
-            { header: 'Type',        key: 'type',         width: 10 },
-            { header: 'Amount',      key: 'amount',       width: 14 },
-            { header: 'Category',    key: 'category',     width: 22 },
-            { header: 'Description', key: 'description',  width: 36 },
+            { header: 'ID', key: 'id', width: 8 },
+            { header: 'Date', key: 'date', width: 22 },
+            { header: 'Type', key: 'type', width: 10 },
+            { header: 'Amount', key: 'amount', width: 14 },
+            { header: 'Category', key: 'category', width: 22 },
+            { header: 'Description', key: 'description', width: 36 },
         ];
 
         sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -353,11 +268,11 @@ export const exportTransactions = async (req, res) => {
 
         for (const tx of rows) {
             sheet.addRow({
-                id:          tx.id,
-                date:        new Date(tx.transaction_timestamp).toISOString().replace('T', ' ').slice(0, 19),
-                type:        tx.type,
-                amount:      parseFloat(tx.amount),
-                category:    tx.category_name ?? '',
+                id: tx.id,
+                date: new Date(tx.transaction_timestamp).toISOString().replace('T', ' ').slice(0, 19),
+                type: tx.type,
+                amount: parseFloat(tx.amount),
+                category: tx.category_name ?? '',
                 description: tx.description ?? '',
             });
         }
@@ -373,6 +288,92 @@ export const exportTransactions = async (req, res) => {
     }
 };
 
+export const updateTransaction = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const parsedId = parseInt(id, 10);
+        if (isNaN(parsedId) || parsedId <= 0)
+            throw ApiError.badRequest('Invalid transaction ID.');
+
+        const { rows: existing } = await db.query(
+            'SELECT * FROM transactions WHERE id = $1 LIMIT 1',
+            [parsedId],
+        );
+        const transaction = existing[0];
+        if (!transaction)
+            throw ApiError.notFound('Transaction not found.');
+
+        if (transaction.user_id !== req.user.id)
+            throw ApiError.forbidden('You do not have permission to update this transaction.');
+
+        const { amount, category_id, description, transaction_timestamp } = req.body;
+
+        if (amount === undefined && category_id === undefined && description === undefined && transaction_timestamp === undefined)
+            throw ApiError.badRequest('At least one field must be provided for update.');
+
+        const updates = [];
+        const params = [];
+        let idx = 1;
+
+        if (amount !== undefined) {
+            const amountError = validateAmount(amount);
+            if (amountError)
+                throw ApiError.badRequest(amountError);
+            updates.push(`amount = $${idx++}`);
+            params.push(parseFloat(amount));
+        }
+        if (category_id !== undefined) {
+            if (category_id === null) {
+                updates.push(`category_id = $${idx++}`);
+                params.push(null);
+            } else {
+                const { rows: catRows } = await db.query(
+                    'SELECT id FROM categories WHERE id = $1 LIMIT 1',
+                    [category_id],
+                );
+                if (!catRows[0])
+                    throw ApiError.notFound('Category not found.');
+                updates.push(`category_id = $${idx++}`);
+                params.push(category_id);
+            }
+        }
+        if (description !== undefined) {
+            if (description !== null && description.length > 500)
+                throw ApiError.badRequest('Description must not exceed 500 characters.');
+            updates.push(`description = $${idx++}`);
+            params.push(description ?? null);
+        }
+        if (transaction_timestamp !== undefined) {
+            const tsError = validateTimestamp(transaction_timestamp);
+            if (tsError)
+                throw ApiError.badRequest(tsError);
+            updates.push(`transaction_timestamp = $${idx++}`);
+            params.push(new Date(transaction_timestamp));
+        }
+
+        params.push(parsedId, req.user.id);
+
+        const { rows } = await db.query(
+            `UPDATE transactions SET ${updates.join(', ')}
+             WHERE id = $${idx++} AND user_id = $${idx}
+             RETURNING *`,
+            params,
+        );
+
+        res.status(200).json({
+            success: true,
+            message: 'Transaction updated successfully.',
+            transaction: rows[0],
+        });
+    } catch (error) {
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Failed to update transaction',
+        });
+    }
+};
+
 export const deleteTransaction = async (req, res) => {
     try {
         const { id } = req.params;
@@ -385,7 +386,7 @@ export const deleteTransaction = async (req, res) => {
             [parsedId],
         );
         const transaction = existing[0];
-        if (!transaction) 
+        if (!transaction)
             throw ApiError.notFound('Transaction not found.');
 
         if (transaction.user_id !== req.user.id)
@@ -396,15 +397,15 @@ export const deleteTransaction = async (req, res) => {
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[TRANSACTION - ${time}] User ${req.user.id} deleted transaction ${parsedId}`);
 
-        res.status(200).json({ 
-            success: true, 
-            message: 'Transaction deleted successfully.' 
+        res.status(200).json({
+            success: true,
+            message: 'Transaction deleted successfully.',
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Failed to delete transaction' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Failed to delete transaction',
         });
     }
 };

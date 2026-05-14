@@ -3,14 +3,6 @@ tags:
     description: Transaction management API
 
 paths:
-  /api/transactions/categories:
-    get:
-      summary: Get all transaction categories (no auth required)
-      tags: [Transactions]
-      responses:
-        200:
-          description: List of 10 categories from DB
-
   /api/transactions:
     post:
       summary: Create a new transaction
@@ -43,6 +35,21 @@ paths:
       responses:
         201:
           description: Transaction created successfully
+          content:
+            application/json:
+              example:
+                success: true
+                message: Transaction created successfully.
+                transaction:
+                  id: 3
+                  user_id: 1
+                  amount: "800.00"
+                  type: EXPENSE
+                  category_id: 1
+                  description: Weekly groceries — Migros
+                  transaction_timestamp: "2026-05-05T14:30:00.000Z"
+                  created_at: "2026-05-05T14:30:01.000Z"
+                guard_warning: null
         400:
           description: Validation error
         404:
@@ -88,6 +95,30 @@ paths:
       responses:
         200:
           description: List of transactions
+          content:
+            application/json:
+              example:
+                success: true
+                total: 3
+                transactions:
+                  - id: 1
+                    amount: "15000.00"
+                    type: INCOME
+                    description: May salary
+                    category_name: null
+                    transaction_timestamp: "2026-05-01T09:00:00.000Z"
+                  - id: 2
+                    amount: "800.00"
+                    type: EXPENSE
+                    description: Weekly groceries — Migros
+                    category_name: Food & Groceries
+                    transaction_timestamp: "2026-05-05T14:30:00.000Z"
+                  - id: 3
+                    amount: "450.00"
+                    type: EXPENSE
+                    description: Dinner at Nusr-Et
+                    category_name: Eating Out
+                    transaction_timestamp: "2026-05-10T20:00:00.000Z"
         400:
           description: Invalid query parameters
 
@@ -123,6 +154,19 @@ paths:
       responses:
         200:
           description: Transaction retrieved successfully
+          content:
+            application/json:
+              example:
+                success: true
+                transaction:
+                  id: 2
+                  user_id: 1
+                  amount: "800.00"
+                  type: EXPENSE
+                  category_id: 1
+                  description: Weekly groceries — Migros
+                  transaction_timestamp: "2026-05-05T14:30:00.000Z"
+                  created_at: "2026-05-05T14:30:01.000Z"
         400:
           description: Invalid ID
         403:
