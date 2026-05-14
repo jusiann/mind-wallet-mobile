@@ -14,12 +14,12 @@ export const getDashboard = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        const [userResult, goalsResult, transactionsResult, statsResult] = await Promise.all([
+        const [balanceResult, goalsResult, transactionsResult, statsResult] = await Promise.all([
             db.query(
-                'SELECT total_balance, monthly_income FROM users WHERE id = $1 LIMIT 1',
+                `SELECT COALESCE(SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END), 0) AS total_balance
+                 FROM transactions WHERE user_id = $1`,
                 [userId],
             ),
-
             db.query(
                 `SELECT
                     id, title, target_amount, current_amount, deadline, status,
@@ -33,7 +33,6 @@ export const getDashboard = async (req, res) => {
                  LIMIT 10`,
                 [userId],
             ),
-
             db.query(
                 `SELECT
                     t.id, t.amount, t.type, t.description,
@@ -45,7 +44,6 @@ export const getDashboard = async (req, res) => {
                  LIMIT 5`,
                 [userId],
             ),
-
             db.query(
                 `WITH current_month AS (
                     SELECT
@@ -77,14 +75,6 @@ export const getDashboard = async (req, res) => {
             ),
         ]);
 
-        const user = userResult.rows[0];
-        if (!user)
-            return res.status(404).json({ 
-                success: false, 
-                error: 'User not found.' 
-            });
-        
-
         const stats = statsResult.rows[0];
         const pct = stats.expense_vs_last_month_pct !== null
             ? parseFloat(stats.expense_vs_last_month_pct)
@@ -96,8 +86,8 @@ export const getDashboard = async (req, res) => {
         res.status(200).json({
             success: true,
             data: {
-                total_balance: parseFloat(user.total_balance),
-                monthly_income: parseFloat(user.monthly_income),
+                total_balance: parseFloat(balanceResult.rows[0].total_balance),
+                monthly_income: parseFloat(stats.total_income),
                 active_goals: goalsResult.rows,
                 recent_transactions: transactionsResult.rows,
                 monthly_stats: {

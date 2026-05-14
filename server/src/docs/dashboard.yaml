@@ -1,0 +1,18 @@
+tags:
+  - name: Dashboard
+    description: Dashboard summary API
+
+paths:
+  /api/dashboard:
+    get:
+      summary: Get full dashboard data for the current user
+      tags: [Dashboard]
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Dashboard data including balance, goals, recent transactions, monthly stats and AI insight
+        401:
+          description: Unauthorized
+        500:
+          description: Failed to load dashboard
