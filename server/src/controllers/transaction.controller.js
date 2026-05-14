@@ -1,5 +1,7 @@
 import ApiError from '../utils/error.js';
 import db from '../lib/db/database.js';
+import { runGuardRail } from '../services/engine/graph.js';
+import ExcelJS from 'exceljs';
 
 const validateAmount = (amount) => {
     const parsed = parseFloat(amount);
@@ -45,20 +47,43 @@ export const createTransaction = async (req, res) => {
         if (description && description.length > 500)
             throw ApiError.badRequest('Description must not exceed 500 characters.');
 
+        let categoryMeta = null;
         if (category_id !== undefined && category_id !== null) {
             const parsedCategoryId = parseInt(category_id, 10);
             if (isNaN(parsedCategoryId) || parsedCategoryId <= 0)
                 throw ApiError.badRequest('category_id must be a positive integer.');
 
             const { rows: catRows } = await db.query(
-                'SELECT id FROM categories WHERE id = $1 LIMIT 1',
+                'SELECT id, name, is_essential FROM categories WHERE id = $1 LIMIT 1',
                 [parsedCategoryId],
             );
             if (catRows.length === 0)
                 throw ApiError.notFound('Category not found.');
+            categoryMeta = catRows[0];
         }
 
-        // TODO: GuardRailNode — intercept here before DB insertion
+        let guardWarning = null;
+        if (type === 'EXPENSE') {
+            try {
+                const { rows: goalRows } = await db.query(
+                    `SELECT id, title, target_amount, current_amount, deadline,
+                            CASE WHEN target_amount = 0 THEN 0
+                                 ELSE ROUND((current_amount / target_amount) * 100, 2)
+                            END AS progress_pct
+                     FROM goals WHERE user_id = $1 AND status = 'ACTIVE'`,
+                    [req.user.id],
+                );
+                guardWarning = await runGuardRail(goalRows, {
+                    amount: parseFloat(amount),
+                    type,
+                    category_name: categoryMeta?.name ?? null,
+                    is_essential: categoryMeta?.is_essential ?? null,
+                    description: description ?? null,
+                });
+            } catch {
+                guardWarning = null;
+            }
+        }
 
         const { rows } = await db.query(
             `INSERT INTO transactions (user_id, category_id, amount, type, description, transaction_timestamp)
@@ -81,6 +106,7 @@ export const createTransaction = async (req, res) => {
             success: true,
             message: 'Transaction created successfully.',
             transaction: rows[0],
+            warning: guardWarning,
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
@@ -286,6 +312,64 @@ export const updateTransaction = async (req, res) => {
             success: false, 
             error: error.message || 'Failed to update transaction' 
         });
+    }
+};
+
+export const exportTransactions = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const { rows } = await db.query(
+            `SELECT
+                t.id,
+                t.amount,
+                t.type,
+                t.description,
+                t.transaction_timestamp,
+                c.name AS category_name
+             FROM transactions t
+             LEFT JOIN categories c ON t.category_id = c.id
+             WHERE t.user_id = $1
+             ORDER BY t.transaction_timestamp DESC`,
+            [userId],
+        );
+
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Mind Wallet';
+        workbook.created = new Date();
+
+        const sheet = workbook.addWorksheet('Transactions');
+        sheet.columns = [
+            { header: 'ID',          key: 'id',          width: 8  },
+            { header: 'Date',        key: 'date',         width: 22 },
+            { header: 'Type',        key: 'type',         width: 10 },
+            { header: 'Amount',      key: 'amount',       width: 14 },
+            { header: 'Category',    key: 'category',     width: 22 },
+            { header: 'Description', key: 'description',  width: 36 },
+        ];
+
+        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
+
+        for (const tx of rows) {
+            sheet.addRow({
+                id:          tx.id,
+                date:        new Date(tx.transaction_timestamp).toISOString().replace('T', ' ').slice(0, 19),
+                type:        tx.type,
+                amount:      parseFloat(tx.amount),
+                category:    tx.category_name ?? '',
+                description: tx.description ?? '',
+            });
+        }
+
+        sheet.getColumn('amount').numFmt = '#,##0.00';
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="mind-wallet-${userId}.xlsx"`);
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        res.status(500).json({ success: false, error: 'Export failed' });
     }
 };
 
