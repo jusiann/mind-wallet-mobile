@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import {
     createTransaction,
     getTransactions,
@@ -8,16 +7,11 @@ import {
     deleteTransaction,
 } from '../controllers/transaction.controller.js';
 import authMiddleware from '../middlewares/auth.middleware.js';
+import { createRateLimiter } from '../utils/rate.limiter.js';
 
 const router = Router();
 
-const transactionLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 30,
-    message: { success: false, error: 'Too many requests, please try again later.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+const transactionLimiter = createRateLimiter(30);
 
 router.post('/', authMiddleware, transactionLimiter, createTransaction);
 router.get('/', authMiddleware, getTransactions);

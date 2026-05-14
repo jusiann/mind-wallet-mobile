@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
 import {
     signUp,
     signIn,
@@ -12,32 +11,13 @@ import {
     deleteAccount,
 } from '../controllers/auth.controller.js';
 import authMiddleware from '../middlewares/auth.middleware.js';
+import { createRateLimiter } from '../utils/rate.limiter.js';
 
 const router = Router();
 
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    message: { success: false, error: 'Too many requests, please try again later.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const forgotLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 3,
-    message: { success: false, error: 'Too many password reset requests, please try again in an hour.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const resetCodeLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
-    message: { success: false, error: 'Too many attempts, please request a new reset code.' },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+const authLimiter = createRateLimiter(10);
+const forgotLimiter = createRateLimiter(3, 60 * 60 * 1000, 'Too many password reset requests, please try again in an hour.');
+const resetCodeLimiter = createRateLimiter(5, 15 * 60 * 1000, 'Too many attempts, please request a new reset code.');
 
 router.post('/signup', authLimiter, signUp);
 router.post('/signin', authLimiter, signIn);

@@ -216,7 +216,7 @@ export const updateTransaction = async (req, res) => {
 
         const { amount, category_id, description, transaction_timestamp } = req.body;
 
-        if (!amount && !category_id && description === undefined && !transaction_timestamp)
+        if (amount === undefined && category_id === undefined && description === undefined && transaction_timestamp === undefined)
             throw ApiError.badRequest('At least one field must be provided for update.');
 
         const updates = [];
@@ -307,7 +307,7 @@ export const deleteTransaction = async (req, res) => {
         if (transaction.user_id !== req.user.id)
             throw ApiError.forbidden('You do not have permission to delete this transaction.');
 
-        await db.query('DELETE FROM transactions WHERE id = $1', [parsedId]);
+        await db.query('DELETE FROM transactions WHERE id = $1 AND user_id = $2', [parsedId, req.user.id]);
 
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[TRANSACTION - ${time}] User ${req.user.id} deleted transaction ${parsedId}`);
