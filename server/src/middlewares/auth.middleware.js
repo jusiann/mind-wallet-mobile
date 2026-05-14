@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import ApiError from '../utils/error.js';
+import db from '../lib/db/database.js';
 
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
     try {
         const authHeader = req.header('Authorization');
         if (!authHeader?.startsWith('Bearer '))
@@ -9,6 +10,16 @@ const authMiddleware = (req, res, next) => {
 
         const token = authHeader.replace('Bearer ', '');
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+
+        const { rows } = await db.query(
+            'SELECT token_version FROM users WHERE id = $1 LIMIT 1',
+            [decoded.userId],
+        );
+        const user = rows[0];
+
+        if (!user || decoded.tokenVersion !== user.token_version)
+            throw ApiError.unauthorized('Token has been invalidated.');
+
         req.user = { id: decoded.userId, email: decoded.email };
         next();
     } catch (error) {

@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    token_version INT NOT NULL DEFAULT 0,
     reset_code VARCHAR(255),
     reset_code_expires TIMESTAMP,
     total_balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
