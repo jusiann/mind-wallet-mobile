@@ -1,6 +1,7 @@
 tags:
   - name: Auth
     description: Authentication API
+
 paths:
   /api/auth/signup:
     post:
@@ -16,13 +17,23 @@ paths:
               properties:
                 fullname:
                   type: string
+                  minLength: 2
+                  maxLength: 50
                 email:
                   type: string
+                  format: email
                 password:
                   type: string
+                  minLength: 8
+                  maxLength: 128
       responses:
         201:
           description: Sign-up successful
+        400:
+          description: Validation error (missing fields, invalid email/password format)
+        409:
+          description: Email already exists
+
   /api/auth/signin:
     post:
       summary: Login user
@@ -37,11 +48,17 @@ paths:
               properties:
                 email:
                   type: string
+                  format: email
                 password:
                   type: string
       responses:
         200:
           description: Sign-in successful
+        400:
+          description: Missing or invalid email format
+        401:
+          description: Invalid email or password
+
   /api/auth/forgot-password:
     post:
       summary: Request password reset code
@@ -56,12 +73,16 @@ paths:
               properties:
                 email:
                   type: string
+                  format: email
       responses:
         200:
-          description: Reset code sent
+          description: Reset code sent (same response whether email exists or not)
+        400:
+          description: Missing or invalid email
+
   /api/auth/check-reset-code:
     post:
-      summary: Verify reset code
+      summary: Verify password reset code
       tags: [Auth]
       requestBody:
         required: true
@@ -73,14 +94,19 @@ paths:
               properties:
                 email:
                   type: string
+                  format: email
                 reset_code:
                   type: string
+                  description: 8-character uppercase hex code received via email
       responses:
         200:
-          description: Reset code verified successfully
+          description: Code verified — returns a short-lived temporary token
+        400:
+          description: Invalid or expired reset code
+
   /api/auth/reset-password:
     post:
-      summary: Reset password
+      summary: Reset password using temporary token
       tags: [Auth]
       requestBody:
         required: true
@@ -92,11 +118,17 @@ paths:
               properties:
                 password:
                   type: string
+                  minLength: 8
                 temporary_token:
                   type: string
       responses:
         200:
           description: Password reset successfully
+        400:
+          description: Same password as current or validation error
+        401:
+          description: Invalid or expired temporary token
+
   /api/auth/refresh-token:
     post:
       summary: Refresh access token
@@ -113,28 +145,41 @@ paths:
                   type: string
       responses:
         200:
-          description: Token refreshed successfully
+          description: New access and refresh tokens issued
+        401:
+          description: Refresh token expired or invalidated
+        403:
+          description: Invalid refresh token
+
   /api/auth/me:
     get:
-      summary: Get current logged in user
+      summary: Get current logged-in user
       tags: [Auth]
       security:
         - bearerAuth: []
       responses:
         200:
-          description: Current user info
+          description: Current user info with dynamic total balance
+        401:
+          description: Unauthorized
+        404:
+          description: User not found
+
   /api/auth/logout:
     post:
-      summary: Logout user
+      summary: Logout user (invalidates all tokens)
       tags: [Auth]
       security:
         - bearerAuth: []
       responses:
         200:
           description: Logged out successfully
+        401:
+          description: Unauthorized
+
   /api/auth/delete-account:
     delete:
-      summary: Delete user account
+      summary: Permanently delete user account
       tags: [Auth]
       security:
         - bearerAuth: []
@@ -151,3 +196,9 @@ paths:
       responses:
         200:
           description: Account deleted successfully
+        400:
+          description: Missing password
+        401:
+          description: Incorrect password
+        404:
+          description: User not found

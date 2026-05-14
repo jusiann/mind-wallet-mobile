@@ -162,15 +162,15 @@ export const forgotPassword = async (req, res) => {
         const emailSubject = 'Password Reset Code';
         const emailText = `Your password reset code is: ${resetCode}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this, please ignore this email.`;
         const emailHtml = `
-            <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; background-color: #0D0D0D; padding: 40px 20px; border-radius: 12px;">
-                <div style="background-color: #1A1A1A; padding: 30px; border-radius: 10px; border: 1px solid #2A2A2A;">
-                    <h2 style="color: #FFFFFF; margin-top: 0;">Password Reset</h2>
-                    <p style="color: #AAAAAA;">Your reset code:</p>
-                    <div style="background-color: #111; padding: 20px; text-align: center; margin: 24px 0; border-radius: 8px; border: 1px dashed #4ADE80;">
-                        <h1 style="color: #4ADE80; font-size: 36px; margin: 0; letter-spacing: 8px;">${resetCode}</h1>
+            <div style="font-family: -apple-system, sans-serif; max-width: 600px; margin: 0 auto; background-color: #F5F3FF; padding: 40px 20px; border-radius: 12px;">
+                <div style="background-color: #FFFFFF; padding: 30px; border-radius: 10px; border: 1px solid #E5E7EB;">
+                    <h2 style="color: #111111; margin-top: 0;">Password Reset</h2>
+                    <p style="color: #555555;">Your reset code:</p>
+                    <div style="background-color: #F5F3FF; padding: 20px; text-align: center; margin: 24px 0; border-radius: 8px; border: 1px dashed #7C3AED;">
+                        <h1 style="color: #7C3AED; font-size: 36px; margin: 0; letter-spacing: 8px;">${resetCode}</h1>
                     </div>
-                    <p style="color: #666; font-size: 14px;">Expires in <strong>15 minutes</strong>.</p>
-                    <p style="color: #666; font-size: 14px; margin-bottom: 0;">If you didn't request this, ignore this email.</p>
+                    <p style="color: #888888; font-size: 14px;">Expires in <strong style="color: #111111;">15 minutes</strong>.</p>
+                    <p style="color: #888888; font-size: 14px; margin-bottom: 0;">If you didn't request this, ignore this email.</p>
                 </div>
             </div>
         `;
@@ -340,16 +340,19 @@ export const refreshToken = async (req, res) => {
 export const getMe = async (req, res) => {
     try {
         const { rows } = await db.query(
-            'SELECT id, name, email, total_balance, monthly_income, created_at FROM users WHERE id = $1 LIMIT 1',
+            `SELECT u.id, u.name, u.email, u.created_at,
+                    COALESCE((SELECT SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END)
+                              FROM transactions WHERE user_id = u.id), 0) AS total_balance
+             FROM users u WHERE u.id = $1 LIMIT 1`,
             [req.user.id],
         );
         const user = rows[0];
-        if (!user) 
+        if (!user)
             throw ApiError.notFound('User not found.');
 
-        res.status(200).json({ 
-            success: true, 
-            user 
+        res.status(200).json({
+            success: true,
+            user
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
