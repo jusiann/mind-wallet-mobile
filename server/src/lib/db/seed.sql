@@ -21,7 +21,7 @@ INSERT INTO goals (user_id, title, target_amount, current_amount, deadline, stat
 ON CONFLICT DO NOTHING;
 
 INSERT INTO transactions (user_id, category_id, amount, type, description, transaction_timestamp) VALUES
-    (1, NULL, 15000.00, 'INCOME', 'Mayıs maaşı', '2026-05-01 09:00:00'),
+    (1, 10, 15000.00, 'INCOME', 'Mayıs maaşı', '2026-05-01 09:00:00'),
     (1, 9, 89.00, 'EXPENSE', 'Spotify + Netflix', '2026-05-02 10:00:00'),
     (1, 1, 800.00, 'EXPENSE', 'Haftalık market alışverişi', '2026-05-03 11:30:00'),
     (1, 4, 2500.00, 'EXPENSE', 'Mayıs kirası', '2026-05-05 08:00:00'),
@@ -29,6 +29,6 @@ INSERT INTO transactions (user_id, category_id, amount, type, description, trans
     (1, 6, 120.00, 'EXPENSE', 'Eczane', '2026-05-08 14:00:00'),
     (1, 3, 200.00, 'EXPENSE', 'İstanbulkart yükleme', '2026-05-10 09:00:00'),
     (1, 5, 350.00, 'EXPENSE', 'Sinema + kahve', '2026-05-11 18:00:00'),
-    (1, NULL, 3000.00, 'INCOME', 'Freelance proje ödemesi', '2026-05-13 15:00:00'),
+    (1, 10, 3000.00, 'INCOME', 'Freelance proje ödemesi', '2026-05-13 15:00:00'),
     (1, 7, 1500.00, 'EXPENSE', 'Yaz kıyafeti alışverişi', '2026-05-14 13:00:00')
 ON CONFLICT DO NOTHING;

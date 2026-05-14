@@ -28,37 +28,9 @@ paths:
                   type: string
                   format: date-time
                   description: Must be a future date
-            examples:
-              laptop_goal:
-                summary: Saving for a laptop
-                value:
-                  title: Laptop Fonu
-                  target_amount: 30000
-                  deadline: "2026-08-01T00:00:00.000Z"
-              vacation_goal:
-                summary: Summer vacation fund
-                value:
-                  title: Yaz Tatili
-                  target_amount: 12000
-                  deadline: "2026-07-01T00:00:00.000Z"
       responses:
         201:
           description: Goal created successfully
-          content:
-            application/json:
-              example:
-                success: true
-                message: Goal created successfully.
-                goal:
-                  id: 1
-                  user_id: 1
-                  title: Laptop Fonu
-                  target_amount: "30000.00"
-                  current_amount: "0.00"
-                  deadline: "2026-08-01"
-                  status: ACTIVE
-                  progress_pct: "0.00"
-                  created_at: "2026-05-14T10:00:00.000Z"
         400:
           description: Validation error (missing fields, past deadline, invalid amount)
         401:
@@ -79,28 +51,6 @@ paths:
       responses:
         200:
           description: List of goals
-          content:
-            application/json:
-              example:
-                success: true
-                total: 2
-                goals:
-                  - id: 1
-                    title: Laptop Fonu
-                    target_amount: "30000.00"
-                    current_amount: "5000.00"
-                    deadline: "2026-08-01"
-                    status: ACTIVE
-                    progress_pct: "16.67"
-                    created_at: "2026-05-14T10:00:00.000Z"
-                  - id: 2
-                    title: Yaz Tatili
-                    target_amount: "12000.00"
-                    current_amount: "0.00"
-                    deadline: "2026-07-01"
-                    status: ACTIVE
-                    progress_pct: "0.00"
-                    created_at: "2026-05-14T10:05:00.000Z"
         400:
           description: Invalid status filter
 
@@ -116,24 +66,9 @@ paths:
           required: true
           schema:
             type: integer
-          example: 1
       responses:
         200:
           description: Goal retrieved successfully
-          content:
-            application/json:
-              example:
-                success: true
-                goal:
-                  id: 1
-                  user_id: 1
-                  title: Laptop Fonu
-                  target_amount: "30000.00"
-                  current_amount: "5000.00"
-                  deadline: "2026-08-01"
-                  status: ACTIVE
-                  progress_pct: "16.67"
-                  created_at: "2026-05-14T10:00:00.000Z"
         400:
           description: Invalid ID
         403:
@@ -152,7 +87,6 @@ paths:
           required: true
           schema:
             type: integer
-          example: 1
       requestBody:
         required: true
         content:
@@ -174,32 +108,9 @@ paths:
                 status:
                   type: string
                   enum: [ACTIVE, COMPLETED, PAUSED]
-            examples:
-              add_savings:
-                summary: Route 5000 TL savings to laptop goal
-                value:
-                  current_amount: 5000
-              mark_completed:
-                summary: Mark goal as completed
-                value:
-                  status: COMPLETED
       responses:
         200:
           description: Goal updated successfully
-          content:
-            application/json:
-              example:
-                success: true
-                message: Goal updated successfully.
-                goal:
-                  id: 1
-                  title: Laptop Fonu
-                  target_amount: "30000.00"
-                  current_amount: "5000.00"
-                  deadline: "2026-08-01"
-                  status: ACTIVE
-                  progress_pct: "16.67"
-                  updated_at: "2026-05-14T11:00:00.000Z"
         400:
           description: Validation error or no fields provided
         403:
@@ -218,15 +129,9 @@ paths:
           required: true
           schema:
             type: integer
-          example: 1
       responses:
         200:
           description: Goal deleted successfully
-          content:
-            application/json:
-              example:
-                success: true
-                message: Goal deleted successfully.
         400:
           description: Invalid ID
         403:
