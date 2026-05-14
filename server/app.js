@@ -10,6 +10,7 @@ import authRoutes from './src/routes/auth.routes.js';
 import transactionRoutes from './src/routes/transaction.routes.js';
 import goalsRoutes from './src/routes/goals.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
+import engineRoutes from './src/routes/engine.routes.js';
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -68,6 +69,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/engine', engineRoutes);
 
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'Route not found' });
