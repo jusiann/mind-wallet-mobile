@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import swaggerJsDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import { connectDB } from './src/lib/db/database.js';
+import db, { connectDB } from './src/lib/db/database.js';
 import { initDB } from './src/lib/db/init.js';
 import authRoutes from './src/routes/auth.routes.js';
 import transactionRoutes from './src/routes/transaction.routes.js';
@@ -12,14 +12,27 @@ import goalsRoutes from './src/routes/goals.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
 import engineRoutes from './src/routes/engine.routes.js';
 
+const REQUIRED_ENV = [
+    'JWT_SECRET_KEY', 'JWT_REFRESH_SECRET_KEY', 'JWT_RESET_SECRET_KEY',
+    'PGHOST', 'PGUSER', 'PGPASSWORD', 'PGDATABASE',
+    'GEMINI_API_KEY',
+];
+const missingEnv = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missingEnv.length > 0) {
+    console.error(`[STARTUP] Missing required env vars: ${missingEnv.join(', ')}`);
+    process.exit(1);
+}
+
 const PORT = process.env.PORT || 3000;
 const app = express();
 
 app.use(helmet());
-app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:8081'],
-    credentials: true,
-}));
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : process.env.NODE_ENV === 'production'
+        ? []
+        : ['http://localhost:3000', 'http://localhost:8081'];
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '10kb' }));
 
 const swaggerOptions = {
@@ -41,7 +54,8 @@ const swaggerOptions = {
 };
 
 const swaggerDocs = swaggerJsDoc(swaggerOptions);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+if (process.env.NODE_ENV !== 'production')
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.use((req, res, next) => {
     const start = Date.now();
@@ -85,9 +99,21 @@ app.use((err, req, res, next) => {
     res.status(statusCode).json({ success: false, error: message });
 });
 
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
     const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
     console.log(`[SERVER - ${time}] Started on port ${PORT}`);
     await connectDB();
     await initDB();
 });
+
+const shutdown = async () => {
+    const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+    console.log(`[SERVER - ${time}] Shutting down gracefully...`);
+    server.close(async () => {
+        await db.end();
+        process.exit(0);
+    });
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
