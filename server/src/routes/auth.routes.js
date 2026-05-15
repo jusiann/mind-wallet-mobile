@@ -18,12 +18,13 @@ const router = Router();
 const authLimiter = createRateLimiter(10);
 const forgotLimiter = createRateLimiter(3, 60 * 60 * 1000, 'Too many password reset requests, please try again in an hour.');
 const resetCodeLimiter = createRateLimiter(5, 15 * 60 * 1000, 'Too many attempts, please request a new reset code.');
+const resetPasswordLimiter = createRateLimiter(5, 60 * 60 * 1000, 'Too many reset attempts, please try again in an hour.');
 
 router.post('/signup', authLimiter, signUp);
 router.post('/signin', authLimiter, signIn);
 router.post('/forgot-password', forgotLimiter, forgotPassword);
 router.post('/check-reset-code', resetCodeLimiter, checkResetCode);
-router.post('/reset-password', resetPassword);
+router.post('/reset-password', resetPasswordLimiter, resetPassword);
 router.post('/refresh-token', authLimiter, refreshToken);
 
 router.get('/me', authMiddleware, getMe);
