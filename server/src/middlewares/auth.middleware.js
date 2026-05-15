@@ -9,7 +9,7 @@ const authMiddleware = async (req, res, next) => {
             throw ApiError.unauthorized('Access token is required.');
 
         const token = authHeader.replace('Bearer ', '');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY, { algorithms: ['HS256'] });
 
         const { rows } = await db.query(
             'SELECT token_version FROM users WHERE id = $1 LIMIT 1',

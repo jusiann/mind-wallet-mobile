@@ -177,8 +177,6 @@ export const forgotPassword = async (req, res) => {
 
         await sendEmail(email, emailSubject, emailText, emailHtml);
 
-        if (process.env.NODE_ENV === 'development')
-            console.log(`[DEV] Reset code for ${email}: ${resetCode}`);
 
         res.status(200).json({
             success: true,
@@ -246,7 +244,7 @@ export const resetPassword = async (req, res) => {
 
         let decoded;
         try {
-            decoded = jwt.verify(temporary_token, process.env.JWT_RESET_SECRET_KEY);
+            decoded = jwt.verify(temporary_token, process.env.JWT_RESET_SECRET_KEY, { algorithms: ['HS256'] });
         } catch (err) {
             if (err instanceof jwt.TokenExpiredError)
                 throw ApiError.unauthorized('Temporary token has expired.');
@@ -290,7 +288,7 @@ export const refreshToken = async (req, res) => {
         if (!refresh_token)
             throw ApiError.unauthorized('Refresh token is required.');
 
-        const decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET_KEY);
+        const decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET_KEY, { algorithms: ['HS256'] });
 
         const { rows } = await db.query(
             'SELECT id, name, email, token_version FROM users WHERE id = $1 LIMIT 1',
