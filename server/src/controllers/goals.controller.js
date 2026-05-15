@@ -46,6 +46,19 @@ const GOAL_SELECT = `
     FROM goals
 `;
 
+export const createGoalRecord = async (userId, { title, target_amount, deadline }) => {
+    const { rows } = await db.query(
+        `INSERT INTO goals (user_id, title, target_amount, current_amount, deadline)
+         VALUES ($1, $2, $3, 0.00, $4)
+         RETURNING id, user_id, title, target_amount, current_amount, deadline, status, created_at,
+            CASE WHEN target_amount = 0 THEN 0
+                 ELSE ROUND((current_amount / target_amount) * 100, 2)
+            END AS progress_pct`,
+        [userId, title.trim(), parseFloat(target_amount), new Date(deadline)],
+    );
+    return rows[0];
+};
+
 export const createGoal = async (req, res) => {
     try {
         const { title, target_amount, deadline } = req.body;

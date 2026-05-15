@@ -374,6 +374,26 @@ export const updateTransaction = async (req, res) => {
     }
 };
 
+export const createTransactionRecord = async (userId, { amount, transactionType, category, description, timestamp }) => {
+    let categoryId = null;
+    if (category) {
+        const { rows: catRows } = await db.query(
+            'SELECT id FROM categories WHERE LOWER(name) = LOWER($1) LIMIT 1',
+            [category],
+        );
+        categoryId = catRows[0]?.id ?? null;
+    }
+
+    const { rows } = await db.query(
+        `INSERT INTO transactions (user_id, category_id, amount, type, description, transaction_timestamp)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [userId, categoryId, parseFloat(amount), transactionType, description ?? null, new Date(timestamp)],
+    );
+
+    return rows[0];
+};
+
 export const deleteTransaction = async (req, res) => {
     try {
         const { id } = req.params;
