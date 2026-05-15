@@ -182,7 +182,7 @@ export const getTransactions = async (req, res) => {
         );
 
         const { rows } = await db.query(
-            `SELECT * FROM transactions WHERE ${whereClause}
+            `SELECT id, amount, type, description, transaction_timestamp, category_id FROM transactions WHERE ${whereClause}
              ORDER BY transaction_timestamp DESC
              LIMIT $${idx++} OFFSET $${idx}`,
             [...params, limit, offset],
@@ -210,7 +210,7 @@ export const getTransaction = async (req, res) => {
             throw ApiError.badRequest('Invalid transaction ID.');
 
         const { rows } = await db.query(
-            'SELECT * FROM transactions WHERE id = $1 LIMIT 1',
+            'SELECT id, amount, type, description, transaction_timestamp, category_id, user_id FROM transactions WHERE id = $1 LIMIT 1',
             [parsedId],
         );
         const transaction = rows[0];
@@ -245,7 +245,8 @@ export const exportTransactions = async (req, res) => {
              FROM transactions t
              LEFT JOIN categories c ON t.category_id = c.id
              WHERE t.user_id = $1
-             ORDER BY t.transaction_timestamp DESC`,
+             ORDER BY t.transaction_timestamp DESC
+             LIMIT 10000`,
             [userId],
         );
 
@@ -296,7 +297,7 @@ export const updateTransaction = async (req, res) => {
             throw ApiError.badRequest('Invalid transaction ID.');
 
         const { rows: existing } = await db.query(
-            'SELECT * FROM transactions WHERE id = $1 LIMIT 1',
+            'SELECT id, user_id FROM transactions WHERE id = $1 LIMIT 1',
             [parsedId],
         );
         const transaction = existing[0];

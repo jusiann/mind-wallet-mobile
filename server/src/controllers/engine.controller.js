@@ -110,7 +110,8 @@ export const analyze = async (req, res) => {
                  FROM transactions t
                  LEFT JOIN categories c ON t.category_id = c.id
                  WHERE t.user_id = $1 AND t.transaction_timestamp >= $2
-                 ORDER BY t.transaction_timestamp DESC`,
+                 ORDER BY t.transaction_timestamp DESC
+                 LIMIT 100`,
                 [userId, thirtyDaysAgo],
             ),
             db.query(

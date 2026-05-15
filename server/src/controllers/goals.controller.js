@@ -107,6 +107,8 @@ export const createGoal = async (req, res) => {
 export const getGoals = async (req, res) => {
     try {
         const { status } = req.query;
+        const limit = Math.min(parseInt(req.query.limit || '20', 10), 100);
+        const offset = Math.max(parseInt(req.query.offset || '0', 10), 0);
 
         if (status) {
             const statusError = validateStatus(status);
@@ -116,13 +118,15 @@ export const getGoals = async (req, res) => {
 
         let query = `${GOAL_SELECT} WHERE user_id = $1`;
         const params = [req.user.id];
+        let idx = 2;
 
         if (status) {
-            query += ` AND status = $2`;
+            query += ` AND status = $${idx++}`;
             params.push(status);
         }
 
-        query += ` ORDER BY created_at DESC`;
+        query += ` ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx}`;
+        params.push(limit, offset);
 
         const { rows } = await db.query(query, params);
 
@@ -130,6 +134,8 @@ export const getGoals = async (req, res) => {
             success: true,
             goals: rows,
             total: rows.length,
+            limit,
+            offset,
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
