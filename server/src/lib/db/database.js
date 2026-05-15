@@ -4,7 +4,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const { Pool } = pg;
-const db = new Pool();
+const db = new Pool({
+    max: parseInt(process.env.DB_POOL_MAX || '30'),
+    idleTimeoutMillis: parseInt(process.env.DB_POOL_IDLE_TIMEOUT || '10000'),
+    connectionTimeoutMillis: parseInt(process.env.DB_POOL_TIMEOUT || '5000'),
+    maxUses: parseInt(process.env.DB_POOL_MAX_USES || '500'),
+});
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

@@ -45,3 +45,5 @@ CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(transactio
 CREATE INDEX IF NOT EXISTS idx_transactions_user_ts ON transactions(user_id, transaction_timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_user_status ON goals(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_goals_user_status_deadline ON goals(user_id, status, deadline ASC);
+CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(user_id, category_id);
