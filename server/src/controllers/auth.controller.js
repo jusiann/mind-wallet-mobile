@@ -34,14 +34,14 @@ export const signUp = async (req, res) => {
             throw ApiError.badRequest('fullname, email and password are required.');
 
         const emailError = validateEmail(email);
-        if (emailError) 
+        if (emailError)
             throw ApiError.badRequest(emailError);
 
         if (fullname.length < 2 || fullname.length > 50)
             throw ApiError.badRequest('Full name must be between 2 and 50 characters long.');
 
         const passError = validatePassword(password);
-        if (passError) 
+        if (passError)
             throw ApiError.badRequest(passError);
 
         const { rows: existing } = await db.query(
@@ -66,17 +66,17 @@ export const signUp = async (req, res) => {
             message: 'Sign-up successful',
             access_token: accessToken,
             refresh_token: refreshToken,
-            user: { 
-                id: user.id, 
-                name: user.name, 
-                email: user.email 
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
             },
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Sign-up failed' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Sign-up failed'
         });
     }
 };
@@ -88,7 +88,7 @@ export const signIn = async (req, res) => {
             throw ApiError.badRequest('Email and password are required.');
 
         const emailError = validateEmail(email);
-        if (emailError) 
+        if (emailError)
             throw ApiError.badRequest(emailError);
 
         const { rows } = await db.query(
@@ -111,17 +111,17 @@ export const signIn = async (req, res) => {
             message: 'Sign-in successful',
             access_token: accessToken,
             refresh_token: refreshToken,
-            user: { 
-                id: existingUser.id, 
-                name: existingUser.name, 
-                email: existingUser.email 
+            user: {
+                id: existingUser.id,
+                name: existingUser.name,
+                email: existingUser.email
             },
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Sign-in failed' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Sign-in failed'
         });
     }
 };
@@ -129,11 +129,11 @@ export const signIn = async (req, res) => {
 export const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        if (!email) 
+        if (!email)
             throw ApiError.badRequest('Email is required.');
 
         const emailError = validateEmail(email);
-        if (emailError) 
+        if (emailError)
             throw ApiError.badRequest(emailError);
 
         const { rows } = await db.query(
@@ -186,9 +186,9 @@ export const forgotPassword = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Password reset failed' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Password reset failed'
         });
     }
 };
@@ -227,9 +227,9 @@ export const checkResetCode = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Reset code verification failed' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Reset code verification failed'
         });
     }
 };
@@ -241,7 +241,7 @@ export const resetPassword = async (req, res) => {
             throw ApiError.badRequest('Password and temporary token are required.');
 
         const passError = validatePassword(password);
-        if (passError) 
+        if (passError)
             throw ApiError.badRequest(passError);
 
         let decoded;
@@ -261,7 +261,7 @@ export const resetPassword = async (req, res) => {
             [decoded.userId],
         );
         const user = rows[0];
-        if (!user) 
+        if (!user)
             throw ApiError.notFound('User not found.');
 
         const isSamePassword = await bcrypt.compare(password, user.password);
@@ -271,15 +271,15 @@ export const resetPassword = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, user.id]);
 
-        res.status(200).json({ 
-            success: true, 
-            message: 'Password reset successfully' 
+        res.status(200).json({
+            success: true,
+            message: 'Password reset successfully'
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Password reset failed' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Password reset failed'
         });
     }
 };
@@ -297,7 +297,7 @@ export const refreshToken = async (req, res) => {
             [decoded.userId],
         );
         const user = rows[0];
-        if (!user) 
+        if (!user)
             throw ApiError.notFound('User not found.');
 
         if (decoded.tokenVersion !== user.token_version)
@@ -310,28 +310,28 @@ export const refreshToken = async (req, res) => {
             message: 'Token refreshed successfully',
             access_token: accessToken,
             refresh_token: newRefreshToken,
-            user: { 
-                id: user.id, 
-                name: user.name, 
-                email: user.email 
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
             },
         });
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
-            res.status(401).json({ 
-                success: false, 
-                error: 'Refresh token has expired' 
+            res.status(401).json({
+                success: false,
+                error: 'Refresh token has expired'
             });
         } else if (error instanceof jwt.JsonWebTokenError) {
-            res.status(403).json({ 
-                success: false, 
-                error: 'Invalid refresh token' 
+            res.status(403).json({
+                success: false,
+                error: 'Invalid refresh token'
             });
         } else {
             const statusCode = error.statusCode || 500;
-            res.status(statusCode).json({ 
-                success: false, 
-                error: error.message || 'Token refresh failed' 
+            res.status(statusCode).json({
+                success: false,
+                error: error.message || 'Token refresh failed'
             });
         }
     }
@@ -356,9 +356,9 @@ export const getMe = async (req, res) => {
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Failed to get user data' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Failed to get user data'
         });
     }
 };
@@ -369,15 +369,15 @@ export const logout = async (req, res) => {
             'UPDATE users SET token_version = token_version + 1 WHERE id = $1',
             [req.user.id],
         );
-        res.status(200).json({ 
-            success: true, 
-            message: 'Logged out successfully.' 
+        res.status(200).json({
+            success: true,
+            message: 'Logged out successfully.'
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Logout failed' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Logout failed'
         });
     }
 };
@@ -393,7 +393,7 @@ export const deleteAccount = async (req, res) => {
             [req.user.id],
         );
         const user = rows[0];
-        if (!user) 
+        if (!user)
             throw ApiError.notFound('User not found.');
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -402,15 +402,15 @@ export const deleteAccount = async (req, res) => {
 
         await db.query('DELETE FROM users WHERE id = $1', [user.id]);
 
-        res.status(200).json({ 
-            success: true, 
-            message: 'Account deleted successfully.' 
+        res.status(200).json({
+            success: true,
+            message: 'Account deleted successfully.'
         });
     } catch (error) {
         const statusCode = error.statusCode || 500;
-        res.status(statusCode).json({ 
-            success: false, 
-            error: error.message || 'Account deletion failed' 
+        res.status(statusCode).json({
+            success: false,
+            error: error.message || 'Account deletion failed'
         });
     }
 };
