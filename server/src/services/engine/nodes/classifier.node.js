@@ -1,15 +1,25 @@
 import { generateText } from '../../gemini.service.js';
 
 export const classifierNode = async (state) => {
-    const prompt = `Kullanıcı mesajını sınıflandır. Sadece "ANALYSIS" veya "TRANSACTION" yaz, başka şey yazma.
+    const recentCtx = state.chatHistory.slice(-2)
+        .map(m => `${m.role === 'user' ? 'Kullanici' : 'Asistan'}: ${m.content}`)
+        .join('\n');
 
-ANALYSIS: Harcama analizi, bütçe inceleme, tasarruf tavsiyesi, genel soru istekleri.
-TRANSACTION: Yeni bir harcama veya gelir kaydetme girişimleri.
+    const contextBlock = recentCtx ? `\nOnceki konusma baglamı:\n${recentCtx}\n` : '';
 
-Mesaj: "${state.currentInput}"`;
+    const prompt = `Kullanıcı mesajını sınıflandır. Sadece "ANALYSIS", "TRANSACTION" veya "GOAL_CREATION" yaz, başka şey yazma.
+                    ANALYSIS: Harcama analizi, bütçe inceleme, tasarruf tavsiyesi, genel soru, kategori azaltma isteği.
+                    TRANSACTION: Yeni bir harcama veya gelir kaydetme girişimleri ("X TL harcadım", "X TL aldım" vb.).
+                    GOAL_CREATION: Yeni bir finansal hedef oluşturma isteği ("X TL biriktirmek istiyorum", "hedef oluştur" vb.).
+                    ${contextBlock}
+                    Mesaj: "${state.currentInput}"`;
 
     const raw = await generateText(prompt, 'ANALYSIS');
-    const classification = raw.trim().toUpperCase().includes('TRANSACTION') ? 'TRANSACTION' : 'ANALYSIS';
+    const upper = raw.trim().toUpperCase();
+
+    const classification = upper.includes('TRANSACTION') ? 'TRANSACTION'
+        : upper.includes('GOAL_CREATION') ? 'GOAL_CREATION'
+        : 'ANALYSIS';
 
     return { classification };
 };
