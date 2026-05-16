@@ -23,54 +23,54 @@ export const analyze = async (req, res) => {
         
 
         if (buttonPayload?.action === 'cancel') {
-            return quickReply(res, 'Tamam, iptal edildi.', [
-                { id: 'end_analyze', label: 'Analiz et', payload: { action: 'start_analysis' } },
-                { id: 'end_transaction', label: 'islem gir', payload: { action: 'start_transaction' } },
-                { id: 'end_goal', label: 'Hedef olustur', payload: { action: 'start_goal' } },
+            return quickReply(res, 'Cancelled.', [
+                { id: 'end_analyze', label: 'Analyze', payload: { action: 'start_analysis' } },
+                { id: 'end_transaction', label: 'Add transaction', payload: { action: 'start_transaction' } },
+                { id: 'end_goal', label: 'Create goal', payload: { action: 'start_goal' } },
             ]);
         }
 
         if (buttonPayload?.action === 'done') {
-            return quickReply(res, 'Görüşürüz!', null);
+            return quickReply(res, 'See you later!', null);
         }
 
         if (buttonPayload?.action === 'confirm_transaction') {
             const tx = buttonPayload.transaction;
             if (!tx || typeof tx.amount !== 'number' || tx.amount <= 0) {
-                return res.status(400).json({ success: false, error: 'Geçersiz işlem verisi.' });
+                return res.status(400).json({ success: false, error: 'Invalid transaction data.' });
             }
             const userId = req.user.id;
             const saved = await createTransactionRecord(userId, tx);
             const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
             console.log(`[ENGINE-CHAT - ${time}] User ${userId} saved transaction ${saved.id} via chat`);
-            return quickReply(res, `Kaydedildi. ${tx.amount.toLocaleString('tr-TR')} TL ${tx.category ?? ''} işlemi eklendi.`, [
-                { id: 'end_analyze', label: 'Analiz et', payload: { action: 'start_analysis' } },
-                { id: 'end_transaction', label: 'Islem gir', payload: { action: 'start_transaction' } },
-                { id: 'end_goal', label: 'Hedef olustur', payload: { action: 'start_goal' } },
-                { id: 'end_done', label: 'Hayır, tamam',  payload: { action: 'done' } },
+            return quickReply(res, `Saved. ${tx.amount.toLocaleString('tr-TR')} TRY ${tx.category ?? ''} transaction added.`, [
+                { id: 'end_analyze', label: 'Analyze', payload: { action: 'start_analysis' } },
+                { id: 'end_transaction', label: 'Add transaction', payload: { action: 'start_transaction' } },
+                { id: 'end_goal', label: 'Create goal', payload: { action: 'start_goal' } },
+                { id: 'end_done', label: 'No, thanks', payload: { action: 'done' } },
             ]);
         }
 
         if (buttonPayload?.action === 'confirm_goal') {
             const goal = buttonPayload.goal;
             if (!goal || !goal.title || !goal.target_amount || !goal.deadline) {
-                return res.status(400).json({ success: false, error: 'Geçersiz hedef verisi.' });
+                return res.status(400).json({ success: false, error: 'Invalid goal data.' });
             }
             const userId = req.user.id;
             const saved = await createGoalRecord(userId, goal);
             const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
             console.log(`[ENGINE-CHAT - ${time}] User ${userId} created goal ${saved.id} via chat`);
-            return quickReply(res, `${goal.title} hedefi oluşturuldu! Hedef: ${Number(goal.target_amount).toLocaleString('tr-TR')} TL.`, [
-                { id: 'end_analyze', label: 'Analiz et', payload: { action: 'start_analysis' } },
-                { id: 'end_transaction', label: 'Islem gir', payload: { action: 'start_transaction' } },
-                { id: 'end_done', label: 'Hayır, tamam',  payload: { action: 'done' } },
+            return quickReply(res, `${goal.title} goal created! Target: ${Number(goal.target_amount).toLocaleString('tr-TR')} TRY.`, [
+                { id: 'end_analyze', label: 'Analyze', payload: { action: 'start_analysis' } },
+                { id: 'end_transaction', label: 'Add transaction', payload: { action: 'start_transaction' } },
+                { id: 'end_done', label: 'No, thanks', payload: { action: 'done' } },
             ]);
         }
 
         if (buttonPayload?.action === 'confirm_routing') {
             const route = buttonPayload.route;
             if (!route?.goalId || !route?.amount || route.amount <= 0) {
-                return res.status(400).json({ success: false, error: 'Geçersiz yönlendirme verisi.' });
+                return res.status(400).json({ success: false, error: 'Invalid routing data.' });
             }
             const userId = req.user.id;
             const { rows } = await db.query(
@@ -81,14 +81,14 @@ export const analyze = async (req, res) => {
                 [route.amount, route.goalId, userId],
             );
             if (!rows[0])
-                return res.status(404).json({ success: false, error: 'Hedef bulunamadı.' });
+                return res.status(404).json({ success: false, error: 'Goal not found.' });
             const g = rows[0];
             const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
-            console.log(`[ENGINE-CHAT - ${time}] User ${userId} routed ${route.amount} TL to goal ${route.goalId}`);
-            return quickReply(res, `${Number(route.amount).toLocaleString('tr-TR')} TL ${g.title} hedefine aktarıldı. Toplam: ${Number(g.current_amount).toLocaleString('tr-TR')} / ${Number(g.target_amount).toLocaleString('tr-TR')} TL.`, [
-                { id: 'end_analyze', label: 'Analiz et', payload: { action: 'start_analysis' } },
-                { id: 'end_transaction', label: 'Islem gir', payload: { action: 'start_transaction' } },
-                { id: 'end_done', label: 'Hayır, tamam', payload: { action: 'done' } },
+            console.log(`[ENGINE-CHAT - ${time}] User ${userId} routed ${route.amount} TRY to goal ${route.goalId}`);
+            return quickReply(res, `${Number(route.amount).toLocaleString('tr-TR')} TRY routed to ${g.title}. Total: ${Number(g.current_amount).toLocaleString('tr-TR')} / ${Number(g.target_amount).toLocaleString('tr-TR')} TRY.`, [
+                { id: 'end_analyze', label: 'Analyze', payload: { action: 'start_analysis' } },
+                { id: 'end_transaction', label: 'Add transaction', payload: { action: 'start_transaction' } },
+                { id: 'end_done', label: 'No, thanks', payload: { action: 'done' } },
             ]);
         }
 

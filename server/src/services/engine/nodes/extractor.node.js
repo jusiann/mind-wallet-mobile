@@ -6,32 +6,32 @@ export const extractorNode = async (state) => {
     const categoryNames = categories.map(c => c.name).join(', ');
 
     if (classification === 'TRANSACTION') {
-        const prompt = `Kullanıcı mesajından işlem bilgilerini çıkar.
+        const prompt = `Extract transaction details from the user message.
 
-                        Mevcut kategoriler: ${categoryNames || 'Yemek, Ulaşım, Eğlence, Alışveriş, Faturalar, Sağlık, Diğer'}
+                        Available categories: ${categoryNames || 'Food, Transportation, Entertainment, Shopping, Bills, Health, Other'}
 
-                        Mesaj: "${currentInput}"
+                        Message: "${currentInput}"
 
-                        Şu JSON formatında yanıt ver (başka hiçbir şey yazma):
+                        Respond in the following JSON format (write nothing else):
                         {
-                        "amount": <sayısal TRY miktarı>,
-                        "type": "EXPENSE" veya "INCOME",
-                        "category": "<mevcut kategorilerden en yakın eşleşme>",
-                        "description": "<kısa açıklama, max 100 karakter>"
+                        "amount": <numeric TRY amount>,
+                        "type": "EXPENSE" or "INCOME",
+                        "category": "<closest match from available categories>",
+                        "description": "<short description, max 100 characters>"
                         }
 
-                        Kurallar:
-                        - amount: sadece sayı, string değil
-                        - type: harcama/gider → "EXPENSE", gelir/kazanç → "INCOME"
-                        - category: mutlaka mevcut kategorilerden biri olmalı
-                        - Mesajda miktar yoksa amount: 0 döndür`;
+                        Rules:
+                        - amount: number only, not a string
+                        - type: spending/expense → "EXPENSE", income/earnings → "INCOME"
+                        - category: must be one of the available categories
+                        - If no amount in the message, return amount: 0`;
 
         const result = await generateJSON(prompt, null);
 
         if (!result || typeof result.amount !== 'number' || result.amount <= 0)
             return {
                 pendingData: null,
-                message: 'İşlem miktarını anlayamadım. Örnek: "Yemeğe 150 TL harcadım"',
+                message: 'Could not understand the transaction amount. Example: "I spent 150 TRY on food"',
             };
 
         return {
@@ -39,7 +39,7 @@ export const extractorNode = async (state) => {
                 type: 'transaction',
                 amount: result.amount,
                 transactionType: result.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-                category: result.category ?? 'Diğer',
+                category: result.category ?? 'Other',
                 description: result.description ?? currentInput.slice(0, 100),
                 timestamp: new Date().toISOString(),
             },
@@ -47,33 +47,33 @@ export const extractorNode = async (state) => {
     }
 
     if (classification === 'GOAL_CREATION') {
-        const prompt = `Kullanıcı mesajından hedef bilgilerini çıkar.
+        const prompt = `Extract goal details from the user message.
 
-                        Mesaj: "${currentInput}"
+                        Message: "${currentInput}"
 
-                        Şu JSON formatında yanıt ver (başka hiçbir şey yazma):
+                        Respond in the following JSON format (write nothing else):
                         {
-                        "title": "<hedef başlığı, max 60 karakter>",
-                        "target_amount": <sayısal TRY hedef miktarı>
+                        "title": "<goal title, max 60 characters>",
+                        "target_amount": <numeric TRY target amount>
                         }
 
-                        Kurallar:
-                        - title: kısa ve anlamlı Türkçe başlık
-                        - target_amount: sadece sayı
-                        - Mesajda miktar yoksa target_amount: 0 döndür`;
+                        Rules:
+                        - title: short and meaningful title in Turkish
+                        - target_amount: number only
+                        - If no amount in the message, return target_amount: 0`;
 
         const result = await generateJSON(prompt, null);
 
         if (!result || typeof result.target_amount !== 'number' || result.target_amount <= 0)
             return {
                 pendingData: null,
-                message: 'Hedef miktarını anlayamadım. Örnek: "Tatil için 5000 TL biriktirmek istiyorum"',
+                message: 'Could not understand the goal amount. Example: "I want to save 5000 TRY for a vacation"',
             };
 
         return {
             pendingData: {
                 type: 'goal',
-                title: result.title ?? 'Yeni Hedef',
+                title: result.title ?? 'New Goal',
                 target_amount: result.target_amount,
             },
         };

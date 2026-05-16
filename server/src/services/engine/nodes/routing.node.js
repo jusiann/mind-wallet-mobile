@@ -18,22 +18,22 @@ export const routingNode = async (state) => {
         null, 2,
     );
 
-    const prompt = `Kullanıcı aylık ${detectedSavings} TRY tasarruf edebilir.
+    const prompt = `The user can save ${detectedSavings} TRY per month.
 
-                    Aktif finansal hedefler:
+                    Active financial goals:
                     ${goalsJson}
 
-                    Bu tasarrufu hangi hedefe öncelikli yönlendirmeliyiz?
-                    Seçilen hedef için mevcut current_amount'a ek olarak aylık ${detectedSavings} TRY eklendiğinde yeni tahmini tamamlanma tarihini hesapla.
+                    Which goal should we prioritize routing this saving to?
+                    Calculate the new estimated completion date when ${detectedSavings} TRY is added monthly on top of the current_amount for the selected goal.
 
-                    Şu JSON formatında yanıt ver (başka hiçbir şey yazma):
+                    Respond in the following JSON format (write nothing else):
                     {
-                    "goal_id": <seçilen hedefin id'si>,
-                    "goal_title": "<hedef başlığı>",
-                    "monthly_allocation": <aylık yönlendirilecek TRY miktarı>,
-                    "days_saved": <kaç gün erken tamamlanacak>,
-                    "new_deadline": "<yeni tahmini tamamlanma tarihi, ISO format YYYY-MM-DD>",
-                    "message": "<Türkçe öneri mesajı, 1-2 cümle>"
+                    "goal_id": <id of the selected goal>,
+                    "goal_title": "<goal title>",
+                    "monthly_allocation": <monthly TRY amount to allocate>,
+                    "days_saved": <how many days earlier it will be completed>,
+                    "new_deadline": "<new estimated completion date, ISO format YYYY-MM-DD>",
+                    "message": "<recommendation message in Turkish, 1-2 sentences>"
                     }`;
 
     const result = await generateJSON(prompt, null);

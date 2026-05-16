@@ -1,8 +1,8 @@
 const END_BUTTONS = [
-    { id: 'end_analyze', label: 'Analiz et', payload: { action: 'start_analysis' } },
-    { id: 'end_transaction', label: 'Islem gir', payload: { action: 'start_transaction' } },
-    { id: 'end_goal', label: 'Hedef olustur', payload: { action: 'start_goal' } },
-    { id: 'end_done', label: 'Hayır, tamam', payload: { action: 'done' } },
+    { id: 'end_analyze', label: 'Analyze', payload: { action: 'start_analysis' } },
+    { id: 'end_transaction', label: 'Add transaction', payload: { action: 'start_transaction' } },
+    { id: 'end_goal', label: 'Create goal', payload: { action: 'start_goal' } },
+    { id: 'end_done', label: 'No, thanks', payload: { action: 'done' } },
 ];
 
 export const responderNode = async (state) => {
@@ -12,16 +12,16 @@ export const responderNode = async (state) => {
     if (classification === 'TRANSACTION') {
         if (!pendingData || pendingData.type !== 'transaction')
             return {
-                message: message || 'İşlem bilgilerini anlayamadım. Lütfen tekrar deneyin.',
+                message: message || 'Could not understand the transaction details. Please try again.',
                 buttons: END_BUTTONS,
             };
 
         const { amount, transactionType, category, description } = pendingData;
-        const typeLabel = transactionType === 'INCOME' ? 'gelir' : 'gider';
+        const typeLabel = transactionType === 'INCOME' ? 'income' : 'expense';
 
         let msg = warning
-            ? `${warning}\n\n${amount} TL ${category} ${typeLabel}ini yine de kaydetmemi ister misin?`
-            : `${amount} TL ${category} ${typeLabel}ini kaydedeyim mi?`;
+            ? `${warning}\n\nDo you still want me to save the ${amount} TRY ${category} ${typeLabel}?`
+            : `Shall I save the ${amount} TRY ${category} ${typeLabel}?`;
 
         if (description && description !== state.currentInput)
             msg += ` (${description})`;
@@ -29,8 +29,8 @@ export const responderNode = async (state) => {
         return {
             message: msg,
             buttons: [
-                { id: 'confirm_yes', label: 'Evet, kaydet', payload: { action: 'confirm_transaction', transaction: pendingData } },
-                { id: 'confirm_no', label: 'Iptal', payload: { action: 'cancel' } },
+                { id: 'confirm_yes', label: 'Yes, save', payload: { action: 'confirm_transaction', transaction: pendingData } },
+                { id: 'confirm_no', label: 'Cancel', payload: { action: 'cancel' } },
             ],
         };
     }
@@ -40,7 +40,7 @@ export const responderNode = async (state) => {
 
         if (!goalData)
             return {
-                message: 'Hedef bilgisi bulunamadı. Lütfen tekrar deneyin.',
+                message: 'Goal data not found. Please try again.',
                 buttons: END_BUTTONS,
             };
 
@@ -51,10 +51,10 @@ export const responderNode = async (state) => {
         const goalWithDeadline = { ...goalData, deadline: deadlineStr };
 
         return {
-            message: `${goalData.target_amount.toLocaleString('tr-TR')} TL hedef, ${months} aylık süre (${deadlineStr}). Oluşturayım mı?`,
+            message: `${goalData.target_amount.toLocaleString('tr-TR')} TRY goal, ${months}-month deadline (${deadlineStr}). Shall I create it?`,
             buttons: [
-                { id: 'goal_confirm', label: 'Evet, oluştur', payload: { action: 'confirm_goal', goal: goalWithDeadline } },
-                { id: 'goal_cancel', label: 'Iptal', payload: { action: 'cancel' } },
+                { id: 'goal_confirm', label: 'Yes, create', payload: { action: 'confirm_goal', goal: goalWithDeadline } },
+                { id: 'goal_cancel', label: 'Cancel', payload: { action: 'cancel' } },
             ],
         };
     }
@@ -62,17 +62,17 @@ export const responderNode = async (state) => {
     if (classification === 'GOAL_CREATION') {
         if (!pendingData || pendingData.type !== 'goal')
             return {
-                message: message || 'Hedef bilgilerini anlayamadım. Lütfen tekrar deneyin.',
+                message: message || 'Could not understand the goal details. Please try again.',
                 buttons: END_BUTTONS,
             };
 
         return {
-            message: `${pendingData.title} için ${pendingData.target_amount.toLocaleString('tr-TR')} TL hedef belirliyorum. Ne zamana kadar biriktirmek istersin?`,
+            message: `Setting a ${pendingData.target_amount.toLocaleString('tr-TR')} TRY goal for ${pendingData.title}. By when do you want to save it?`,
             buttons: [
-                { id: 'dl_3m', label: '3 ay', payload: { action: 'set_deadline', months: 3, pendingGoalData: pendingData } },
-                { id: 'dl_6m', label: '6 ay', payload: { action: 'set_deadline', months: 6, pendingGoalData: pendingData } },
-                { id: 'dl_1y', label: '1 yıl', payload: { action: 'set_deadline', months: 12, pendingGoalData: pendingData } },
-                { id: 'dl_2y', label: '2 yıl', payload: { action: 'set_deadline', months: 24, pendingGoalData: pendingData } },
+                { id: 'dl_3m', label: '3 months', payload: { action: 'set_deadline', months: 3, pendingGoalData: pendingData } },
+                { id: 'dl_6m', label: '6 months', payload: { action: 'set_deadline', months: 6, pendingGoalData: pendingData } },
+                { id: 'dl_1y', label: '1 year', payload: { action: 'set_deadline', months: 12, pendingGoalData: pendingData } },
+                { id: 'dl_2y', label: '2 years', payload: { action: 'set_deadline', months: 24, pendingGoalData: pendingData } },
             ],
         };
     }
@@ -82,18 +82,18 @@ export const responderNode = async (state) => {
         const hasGoals = activeGoals?.length > 0;
 
         return {
-            message: `${cat} harcamalarını azaltmak için ne yapmak istersin?`,
+            message: `What would you like to do to reduce your ${cat} spending?`,
             buttons: [
-                { id: 'tip_budget', label: 'Ipuçları ver', payload: { action: 'get_tips', category: cat } },
-                ...(hasGoals ? [{ id: 'tip_route', label: 'Hedefe aktar', payload: { action: 'route_savings', category: cat, amount: buttonPayload.amount } }] : []),
-                { id: 'tip_back', label: 'Geri don', payload: { action: 'back_to_analysis' } },
+                { id: 'tip_budget', label: 'Give tips', payload: { action: 'get_tips', category: cat } },
+                ...(hasGoals ? [{ id: 'tip_route', label: 'Route to goal', payload: { action: 'route_savings', category: cat, amount: buttonPayload.amount } }] : []),
+                { id: 'tip_back', label: 'Go back', payload: { action: 'back_to_analysis' } },
             ],
         };
     }
 
     if (buttonPayload?.action === 'get_tips') {
         return {
-            message: message || `${buttonPayload.category} harcamalarını azaltmak için öneriler hazırlandı.`,
+            message: message || `Tips for reducing your ${buttonPayload.category} spending are ready.`,
             buttons: END_BUTTONS,
         };
     }
@@ -110,10 +110,10 @@ export const responderNode = async (state) => {
         const amount = route?.amount ?? 0;
 
         return {
-            message: `${amount > 0 ? `${amount.toLocaleString('tr-TR')} TL` : 'Tasarruf'} ${goalTitle} hedefine aktarılsın mı?`,
+            message: `Shall ${amount > 0 ? `${amount.toLocaleString('tr-TR')} TRY` : 'savings'} be routed to your ${goalTitle} goal?`,
             buttons: [
-                { id: 'route_yes', label: 'Evet, aktar', payload: { action: 'confirm_routing', route } },
-                { id: 'route_no', label: 'Sonra', payload: { action: 'cancel' } },
+                { id: 'route_yes', label: 'Yes, route', payload: { action: 'confirm_routing', route } },
+                { id: 'route_no', label: 'Later', payload: { action: 'cancel' } },
             ],
         };
     }
@@ -125,7 +125,7 @@ export const responderNode = async (state) => {
             payload: { action: 'reduce_category', category: c.name, amount: c.amount },
         }));
         return {
-            message: message || 'Hangi kategoriyi azaltmak istersin?',
+            message: message || 'Which category would you like to reduce?',
             buttons: catButtons.length ? catButtons : END_BUTTONS,
         };
     }
@@ -140,7 +140,7 @@ export const responderNode = async (state) => {
         return { message, buttons: catButtons };
 
     return {
-        message: message || 'Analizin hazır!',
+        message: message || 'Your analysis is ready!',
         buttons: END_BUTTONS,
     };
 };

@@ -23,11 +23,11 @@ export const guardrailNode = async (state) => {
     if (transactionType !== 'EXPENSE' || !activeGoals?.length)
         return { warning: null };
 
-    // Zorunlu kategoriler hiçbir zaman uyarı almaz
+    // Essential categories never receive warnings
     if (isEssential === true)
         return { warning: null };
 
-    // Harcama hiçbir hedefin kalan tutarının %30'unu geçmiyorsa Gemini'ye gitme
+    // Don't call Gemini if spending doesn't exceed 30% of any goal's remaining amount
     const exceedsThreshold = activeGoals.some(g => {
         const remaining = Number(g.target_amount) - Number(g.current_amount);
         return remaining > 0 && amount > remaining * 0.30;
@@ -47,28 +47,28 @@ export const guardrailNode = async (state) => {
     );
 
     const categoryLine = category
-        ? `Kategori: ${category}${isEssential !== null ? ` (${isEssential ? 'zorunlu harcama' : 'zorunlu olmayan harcama'})` : ''}`
-        : 'Kategori: Belirtilmemiş';
+        ? `Category: ${category}${isEssential !== null ? ` (${isEssential ? 'essential expense' : 'non-essential expense'})` : ''}`
+        : 'Category: Not specified';
 
-    const prompt = `Bir kullanıcı yeni bir harcama yapmak istiyor.
+    const prompt = `A user wants to make a new purchase.
 
-                    Harcama: ${amount} TRY
+                    Expense: ${amount} TRY
                     ${categoryLine}
-                    Açıklama: ${description ?? 'Yok'}
+                    Description: ${description ?? 'None'}
 
-                    Aktif finansal hedefler:
+                    Active financial goals:
                     ${goalsJson}
 
-                    Değerlendirme kuralları:
-                    - Zorunlu olmayan (is_essential=false) kategorilerde yüksek harcamalar daha dikkatli değerlendirilmeli.
-                    - Harcama miktarı kullanıcının herhangi bir hedefinin kalan tutarının %30'undan fazlasını tüketiyorsa uyar.
-                    - Hedef yoksa veya harcama makul görünüyorsa "null" yaz.
+                    Evaluation rules:
+                    - High spending in non-essential (is_essential=false) categories should be evaluated more carefully.
+                    - Warn if the expense amount consumes more than 30% of the remaining amount of any of the user's goals.
+                    - If there are no goals or the expense seems reasonable, write "null".
 
-                    Bu harcama kullanıcının finansal hedeflerini önemli ölçüde tehdit ediyor mu?
-                    Eğer evet, kısa ve samimi bir Türkçe uyarı mesajı yaz (max 2 cümle).
-                    Eğer hayır, sadece "null" yaz.
+                    Does this expense significantly threaten the user's financial goals?
+                    If yes, write a short and sincere warning message in Turkish (max 2 sentences).
+                    If no, write only "null".
 
-                    Sadece düz metin veya "null" — JSON değil.`;
+                    Plain text or "null" only — no JSON.`;
 
     const raw = await generateText(prompt, null);
 
