@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { signin } from '../../api/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
-import { saveTokens } from '../../store/auth';
+import { saveTokens, setAuthState } from '../../store/auth';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -33,7 +33,7 @@ export default function LoginScreen() {
         try {
             const data = await signin({ email: email.trim(), password });
             await saveTokens(data.access_token, data.refresh_token);
-            router.replace('/(tabs)');
+            setAuthState(true);
         } catch (e: any) {
             setError(e.message);
         } finally {

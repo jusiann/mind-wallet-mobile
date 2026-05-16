@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { signup } from '../../api/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
-import { saveTokens } from '../../store/auth';
+import { saveTokens, setAuthState } from '../../store/auth';
 
 export default function RegisterScreen() {
     const router = useRouter();
@@ -31,14 +31,16 @@ export default function RegisterScreen() {
     async function handleRegister() {
         if (!fullName.trim() || !email.trim() || !password || !confirmPassword)
             return setError('Tüm alanları doldurun.');
+
         if (password !== confirmPassword)
             return setError('Şifreler eşleşmiyor.');
+        
         setError('');
         setLoading(true);
         try {
             const data = await signup({ fullname: fullName.trim(), email: email.trim(), password });
             await saveTokens(data.access_token, data.refresh_token);
-            router.replace('/(tabs)');
+            setAuthState(true);
         } catch (e: any) {
             setError(e.message);
         } finally {

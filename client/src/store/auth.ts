@@ -20,3 +20,22 @@ export function getAccessToken(): Promise<string | null> {
 export function getRefreshToken(): Promise<string | null> {
     return SecureStore.getItemAsync(REFRESH_KEY);
 }
+
+type AuthListener = (authenticated: boolean) => void;
+
+let _authenticated = false;
+const _listeners = new Set<AuthListener>();
+
+export function setAuthState(authenticated: boolean) {
+    _authenticated = authenticated;
+    _listeners.forEach(fn => fn(authenticated));
+}
+
+export function getAuthState() {
+    return _authenticated;
+}
+
+export function subscribeAuthState(listener: AuthListener) {
+    _listeners.add(listener);
+    return () => { _listeners.delete(listener); };
+}
