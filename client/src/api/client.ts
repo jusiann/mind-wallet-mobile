@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from '../store/auth';
+import { clearTokens, getAccessToken, getRefreshToken, saveTokens, setAuthState } from '../store/auth';
 
 export const BASE_URL = 'http://10.0.2.2:3000/api';
 
@@ -31,6 +31,7 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
             }
         }
         await clearTokens();
+        setAuthState(false);
         router.replace('/(auth)/login');
         throw new Error('Oturum süresi doldu.');
     }
