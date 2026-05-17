@@ -21,6 +21,17 @@ export function getRefreshToken(): Promise<string | null> {
     return SecureStore.getItemAsync(REFRESH_KEY);
 }
 
+let _userName = '';
+
+export function setUserName(name: string) {
+    _userName = name;
+}
+
+export function getUserInitials(): string {
+    if (!_userName) return '?';
+    return _userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
 type AuthListener = (authenticated: boolean) => void;
 
 let _authenticated = false;
