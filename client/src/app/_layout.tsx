@@ -8,7 +8,7 @@ import {
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { getMe } from '../api/auth';
-import { clearTokens, getAccessToken, getAuthState, setAuthState, subscribeAuthState } from '../store/auth';
+import { clearTokens, getAccessToken, getAuthState, setAuthState, setUserName, subscribeAuthState } from '../store/auth';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -26,7 +26,8 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
             try {
                 const token = await getAccessToken();
                 if (token) {
-                    await getMe();
+                    const res = await getMe();
+                    setUserName(res.user.name);
                     setAuthState(true);
                 }
             } catch {
@@ -50,6 +51,7 @@ function RootNavigator() {
             {/* PROTECTED ROUTES */}
             <Stack.Protected guard={authenticated}>
                 <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="profile" />
             </Stack.Protected>
 
             {/* PUBLIC ROUTES */}
