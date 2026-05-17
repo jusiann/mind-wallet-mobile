@@ -50,6 +50,20 @@ export function getMe() {
     return apiFetch<{ user: User }>('/auth/me');
 }
 
+export function updateProfile(data: { name: string }) {
+    return apiFetch<{ user: User }>('/auth/me', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+}
+
+export function changePassword(data: { current_password: string; new_password: string }) {
+    return apiFetch<{ message: string }>('/auth/change-password', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+}
+
 export function logout() {
     return apiFetch<{ message: string }>('/auth/logout', { method: 'POST' });
 }

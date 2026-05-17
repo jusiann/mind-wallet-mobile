@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { signup } from '../../api/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
-import { saveTokens, setAuthState } from '../../store/auth';
+import { saveTokens, setAuthState, setUserName } from '../../store/auth';
 
 export default function RegisterScreen() {
     const router = useRouter();
@@ -40,6 +40,7 @@ export default function RegisterScreen() {
         try {
             const data = await signup({ fullname: fullName.trim(), email: email.trim(), password });
             await saveTokens(data.access_token, data.refresh_token);
+            setUserName(data.user.name);
             setAuthState(true);
         } catch (e: any) {
             setError(e.message);
@@ -57,7 +58,7 @@ export default function RegisterScreen() {
             </View>
 
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
                 <ScrollView

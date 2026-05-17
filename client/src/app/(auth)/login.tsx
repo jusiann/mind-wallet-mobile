@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { signin } from '../../api/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
-import { saveTokens, setAuthState } from '../../store/auth';
+import { saveTokens, setAuthState, setUserName } from '../../store/auth';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -33,6 +33,7 @@ export default function LoginScreen() {
         try {
             const data = await signin({ email: email.trim(), password });
             await saveTokens(data.access_token, data.refresh_token);
+            setUserName(data.user.name);
             setAuthState(true);
         } catch (e: any) {
             setError(e.message);
@@ -50,7 +51,7 @@ export default function LoginScreen() {
             </View>
 
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
                 <ScrollView
