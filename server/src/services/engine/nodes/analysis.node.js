@@ -101,9 +101,10 @@ export const analysisNode = async (state) => {
                     }
 
                     Rules:
-                    - wastefulCategories: top 3 most wasteful categories, empty array if none
+                    - wastefulCategories: top 3 most wasteful categories, empty array if none; suggestion field must be in Turkish
                     - detectedSavings: realistic savings estimate, maximum 40% of total spending
                     - All numeric values must be numbers or decimals, not strings
+                    - message must be in Turkish
                     - Tailor the message to the user's specific question above`;
 
   try {

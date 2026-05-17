@@ -12,7 +12,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { checkResetCode, forgotPassword } from '../../api/auth';
+import { checkResetCode, forgotPassword } from '../../store/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
 
@@ -32,7 +32,7 @@ export default function ForgotPasswordScreen() {
         setError('');
         setSendLoading(true);
         try {
-            await forgotPassword({ email: email.trim() });
+            await forgotPassword(email.trim());
             setCodeSent(true);
         } catch (e: any) {
             setError(e.message);
@@ -47,7 +47,7 @@ export default function ForgotPasswordScreen() {
         setError('');
         setVerifyLoading(true);
         try {
-            const data = await checkResetCode({ email: email.trim(), reset_code: code.trim() });
+            const data = await checkResetCode(email.trim(), code.trim());
             router.push({
                 pathname: '/(auth)/reset-password',
                 params: { temporary_token: data.temporary_token },

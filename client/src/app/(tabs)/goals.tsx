@@ -15,13 +15,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Goal,
-  createGoal,
-  deleteGoalById,
-  getDashboard,
-  getGoals,
-} from "../../api/dashboard";
+import { getDashboard } from "../../store/dashboard";
+import { Goal, createGoal, deleteGoalById, getGoals } from "../../store/goals";
 import { COLORS } from "../../constants/theme";
 import { pendingMessage } from "../../store/pendingMessage";
 

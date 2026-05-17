@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { DashboardData, getDashboard } from "../../api/dashboard";
+import { DashboardData, getDashboard } from "../../store/dashboard";
 import { COLORS, TYPOGRAPHY } from "../../constants/theme";
 import { getUserInitials } from "../../store/auth";
 
@@ -110,7 +110,7 @@ export default function DashboardScreen() {
         <View style={styles.actionsRow}>
           <TouchableOpacity
             style={[styles.actionCard, { backgroundColor: COLORS.primary }]}
-            onPress={() => router.push("/(tabs)/transact")}
+            onPress={() => router.push({ pathname: '/(tabs)/transact', params: { openAs: 'EXPENSE' } })}
           >
             <View
               style={[
@@ -133,7 +133,7 @@ export default function DashboardScreen() {
               styles.actionCard,
               { backgroundColor: COLORS.primaryContainer },
             ]}
-            onPress={() => router.push("/(tabs)/transact")}
+            onPress={() => router.push({ pathname: '/(tabs)/transact', params: { openAs: 'INCOME' } })}
           >
             <View
               style={[

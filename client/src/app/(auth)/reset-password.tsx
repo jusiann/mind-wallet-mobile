@@ -13,7 +13,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { resetPassword } from '../../api/auth';
+import { resetPassword } from '../../store/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
 
@@ -36,7 +36,7 @@ export default function ResetPasswordScreen() {
         setError('');
         setLoading(true);
         try {
-            await resetPassword({ password: newPassword, temporary_token: temporary_token! });
+            await resetPassword(newPassword, temporary_token!);
             Alert.alert('Başarılı', 'Şifreniz başarıyla değiştirildi.', [
                 { text: 'Giriş Yap', onPress: () => router.replace('/(auth)/login') },
             ]);

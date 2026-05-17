@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,7 +25,7 @@ import {
   exportTransactionsToFile,
   fetchCategories,
   fetchTransactions,
-} from "../../api/transactions";
+} from "../../store/transactions";
 import { COLORS, TYPOGRAPHY } from "../../constants/theme";
 
 // ─── Category metadata ─────────────────────────────────────────────────────────
@@ -117,9 +117,20 @@ export default function TransactScreen() {
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
+  const [initialType, setInitialType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [detailTx, setDetailTx] = useState<Enriched | null>(null);
   const [exporting, setExporting] = useState(false);
   const navigation = useNavigation();
+  const router = useRouter();
+  const { openAs } = useLocalSearchParams<{ openAs?: 'EXPENSE' | 'INCOME' }>();
+
+  useEffect(() => {
+    if (openAs === 'EXPENSE' || openAs === 'INCOME') {
+      setInitialType(openAs);
+      setAddOpen(true);
+      router.setParams({ openAs: undefined });
+    }
+  }, [openAs]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -275,6 +286,7 @@ export default function TransactScreen() {
       <AddModal
         visible={addOpen}
         categories={categories}
+        initialType={initialType}
         onClose={() => setAddOpen(false)}
         onSaved={() => {
           setAddOpen(false);
@@ -298,15 +310,21 @@ export default function TransactScreen() {
 function AddModal({
   visible,
   categories,
+  initialType = 'EXPENSE',
   onClose,
   onSaved,
 }: {
   visible: boolean;
   categories: Category[];
+  initialType?: 'EXPENSE' | 'INCOME';
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [type, setType] = useState<"EXPENSE" | "INCOME">("EXPENSE");
+  const [type, setType] = useState<"EXPENSE" | "INCOME">(initialType);
+
+  useEffect(() => {
+    if (visible) setType(initialType);
+  }, [visible, initialType]);
   const [amount, setAmount] = useState("");
   const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
   const [description, setDescription] = useState("");

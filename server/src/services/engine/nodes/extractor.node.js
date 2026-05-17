@@ -53,13 +53,14 @@ export const extractorNode = async (state) => {
                         "amount": <numeric TRY amount>,
                         "type": "EXPENSE" or "INCOME",
                         "category": "<closest match from available categories>",
-                        "description": "<short description, max 100 characters>"
+                        "description": "<short description in Turkish, max 100 characters>"
                         }
 
                         Rules:
                         - amount: number only, not a string
                         - type: spending/expense → "EXPENSE", income/earnings → "INCOME"
                         - category: must be one of the available categories
+                        - description: must be in Turkish
                         - If no amount in the message, return amount: 0`;
 
     const result = await generateJSON(prompt, null);

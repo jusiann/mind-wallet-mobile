@@ -12,10 +12,9 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signin } from '../../api/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
-import { saveTokens, setAuthState, setUserName } from '../../store/auth';
+import { login } from '../../store/auth';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -31,10 +30,7 @@ export default function LoginScreen() {
         setError('');
         setLoading(true);
         try {
-            const data = await signin({ email: email.trim(), password });
-            await saveTokens(data.access_token, data.refresh_token);
-            setUserName(data.user.name);
-            setAuthState(true);
+            await login(email.trim(), password);
         } catch (e: any) {
             setError(e.message);
         } finally {

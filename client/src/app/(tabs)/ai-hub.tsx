@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { EngineButton, analyzeEngine } from "../../api/engine";
+import { EngineButton, analyzeEngine } from "../../store/engine";
 import { COLORS } from "../../constants/theme";
 
 interface ChatMessage {

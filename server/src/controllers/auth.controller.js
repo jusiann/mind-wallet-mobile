@@ -175,7 +175,9 @@ export const forgotPassword = async (req, res) => {
             </div>
         `;
 
-        await sendEmail(email, emailSubject, emailText, emailHtml);
+        sendEmail(email, emailSubject, emailText, emailHtml).catch(err =>
+            console.error('[forgot-password] email send failed:', err.message),
+        );
 
         if (process.env.NODE_ENV === 'development')
             console.log(`[DEV] Reset code for ${email}: ${resetCode}`);

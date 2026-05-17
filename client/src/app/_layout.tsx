@@ -7,8 +7,7 @@ import {
 } from '@expo-google-fonts/hanken-grotesk';
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { getMe } from '../api/auth';
-import { clearTokens, getAccessToken, getAuthState, setAuthState, setUserName, subscribeAuthState } from '../store/auth';
+import { clearTokens, getAccessToken, getAuthState, getMe, setAuthState, setUserName, subscribeAuthState } from '../store/auth';
 
 SplashScreen.preventAutoHideAsync();
 

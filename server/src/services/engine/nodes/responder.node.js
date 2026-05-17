@@ -1,3 +1,5 @@
+import { toTR } from '../categoryMap.js';
+
 const END_BUTTONS = [
   {
     id: "end_analyze",
@@ -331,7 +333,7 @@ export const responderNode = async (state) => {
   ) {
     const catButtons = (wastefulCategories ?? []).slice(0, 3).map((c, i) => ({
       id: `cat_${i}`,
-      label: `${c.name} — ${Number(c.amount).toLocaleString("tr-TR")} TL`,
+      label: `${toTR(c.name)} — ${Number(c.amount).toLocaleString("tr-TR")} TL`,
       payload: {
         action: "reduce_category",
         category: c.name,
@@ -346,7 +348,7 @@ export const responderNode = async (state) => {
 
   const catButtons = (wastefulCategories ?? []).slice(0, 3).map((c, i) => ({
     id: `cat_${i}`,
-    label: `${c.name} — ${Number(c.amount).toLocaleString("tr-TR")} TL`,
+    label: `${toTR(c.name)} — ${Number(c.amount).toLocaleString("tr-TR")} TL`,
     payload: { action: "reduce_category", category: c.name, amount: c.amount },
   }));
 
