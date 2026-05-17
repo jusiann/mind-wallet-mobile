@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens, setAuthState } from '../store/auth';
 
-export const BASE_URL = 'http://192.168.1.12:3000/api';
+// export const BASE_URL = 'http://192.168.1.12:3000/api';
+export const BASE_URL = 'https://mind-wallet-api.onrender.com/api';
 
 type FetchOptions = RequestInit & { _retry?: boolean };
 
