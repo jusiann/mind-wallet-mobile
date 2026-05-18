@@ -7,6 +7,8 @@ import {
     resetPassword,
     refreshToken,
     getMe,
+    updateProfile,
+    changePassword,
     logout,
     deleteAccount,
 } from '../controllers/auth.controller.js';
@@ -28,6 +30,8 @@ router.post('/reset-password', resetPasswordLimiter, resetPassword);
 router.post('/refresh-token', authLimiter, refreshToken);
 
 router.get('/me', authMiddleware, getMe);
+router.patch('/me', authMiddleware, updateProfile);
+router.patch('/change-password', authMiddleware, changePassword);
 router.post('/logout', authMiddleware, logout);
 router.delete('/delete-account', authMiddleware, deleteAccount);
 

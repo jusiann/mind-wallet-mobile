@@ -88,8 +88,16 @@ export const getDashboard = async (req, res) => {
             data: {
                 total_balance: parseFloat(balanceResult.rows[0].total_balance),
                 monthly_income: parseFloat(stats.total_income),
-                active_goals: goalsResult.rows,
-                recent_transactions: transactionsResult.rows,
+                active_goals: goalsResult.rows.map(g => ({
+                    ...g,
+                    target_amount: parseFloat(g.target_amount),
+                    current_amount: parseFloat(g.current_amount),
+                    progress_pct: parseFloat(g.progress_pct),
+                })),
+                recent_transactions: transactionsResult.rows.map(t => ({
+                    ...t,
+                    amount: parseFloat(t.amount),
+                })),
                 monthly_stats: {
                     total_income: parseFloat(stats.total_income),
                     total_expense: parseFloat(stats.total_expense),

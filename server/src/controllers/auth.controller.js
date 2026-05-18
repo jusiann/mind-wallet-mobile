@@ -175,7 +175,9 @@ export const forgotPassword = async (req, res) => {
             </div>
         `;
 
-        await sendEmail(email, emailSubject, emailText, emailHtml);
+        sendEmail(email, emailSubject, emailText, emailHtml).catch(err =>
+            console.error('[forgot-password] email send failed:', err.message),
+        );
 
 
         res.status(200).json({
@@ -332,6 +334,49 @@ export const refreshToken = async (req, res) => {
                 error: error.message || 'Token refresh failed'
             });
         }
+    }
+};
+
+export const updateProfile = async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name || name.trim().length < 2 || name.trim().length > 50)
+            throw ApiError.badRequest('Name must be between 2 and 50 characters.');
+
+        const { rows } = await db.query(
+            'UPDATE users SET name = $1 WHERE id = $2 RETURNING id, name, email',
+            [name.trim(), req.user.id],
+        );
+        res.status(200).json({ success: true, user: rows[0] });
+    } catch (error) {
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({ success: false, error: error.message || 'Update failed' });
+    }
+};
+
+export const changePassword = async (req, res) => {
+    try {
+        const { current_password, new_password } = req.body;
+        if (!current_password || !new_password)
+            throw ApiError.badRequest('Current and new password are required.');
+
+        const passError = validatePassword(new_password);
+        if (passError) throw ApiError.badRequest(passError);
+
+        const { rows } = await db.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
+        const isValid = await bcrypt.compare(current_password, rows[0].password);
+        if (!isValid) throw ApiError.unauthorized('Current password is incorrect.');
+
+        const isSame = await bcrypt.compare(new_password, rows[0].password);
+        if (isSame) throw ApiError.badRequest('New password must be different from the current password.');
+
+        const hashed = await bcrypt.hash(new_password, 10);
+        await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashed, req.user.id]);
+
+        res.status(200).json({ success: true, message: 'Password changed successfully.' });
+    } catch (error) {
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({ success: false, error: error.message || 'Password change failed' });
     }
 };
 

@@ -1,83 +1,138 @@
-import { generateJSON } from '../../gemini.service.js';
+import { generateJSON } from "../../gemini.service.js";
+
+// ─── Turkish amount parser ─────────────────────────────────────────────────
+const MULTIPLIERS = { bin: 1_000, milyon: 1_000_000, milyar: 1_000_000_000 };
+const AMOUNT_RE = /(\d[\d.,]*)\s*(bin|milyon|milyar)?(?:\s*(?:tl|₺|lira))?/i;
+
+function parseTurkishAmount(text) {
+  const m = text.match(AMOUNT_RE);
+  if (!m) return 0;
+  // Dots used as thousands separator (e.g. 250.000 → 250000); comma as decimal
+  const numStr = m[1].replace(/\.(?=\d{3}(?:[.,]|$))/g, "").replace(",", ".");
+  const base = parseFloat(numStr);
+  if (isNaN(base) || base <= 0) return 0;
+  return base * (m[2] ? (MULTIPLIERS[m[2].toLowerCase()] ?? 1) : 1);
+}
+
+function extractGoalFromInput(input) {
+  const fullMatch = input.match(
+    /\d[\d.,]*\s*(?:bin|milyon|milyar)?(?:\s*(?:tl|₺|lira))?/i,
+  );
+  if (!fullMatch) return null;
+
+  const amount = parseTurkishAmount(fullMatch[0]);
+  if (amount <= 0) return null;
+
+  const NOISE =
+    /\b(için|hedefi?|biriktirmek|istiyorum|biriktir|tasarruf|etmek|kaydet|oluştur|tl|lira|₺)\b/gi;
+  const title = input
+    .replace(fullMatch[0], "")
+    .replace(NOISE, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60);
+
+  return { title: title || "Yeni Hedef", target_amount: amount };
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 export const extractorNode = async (state) => {
-    const { classification, currentInput, categories } = state;
+  const { classification, currentInput, categories } = state;
 
-    const categoryNames = categories.map(c => c.name).join(', ');
+  const categoryNames = categories.map((c) => c.name).join(", ");
 
-    if (classification === 'TRANSACTION') {
-        const prompt = `Kullanıcı mesajından işlem bilgilerini çıkar.
+  if (classification === "TRANSACTION") {
+    const prompt = `Extract transaction details from the user message.
 
-                        Mevcut kategoriler: ${categoryNames || 'Yemek, Ulaşım, Eğlence, Alışveriş, Faturalar, Sağlık, Diğer'}
+                        Available categories: ${categoryNames || "Food, Transportation, Entertainment, Shopping, Bills, Health, Other"}
 
-                        Mesaj: "${currentInput}"
+                        Message: "${currentInput}"
 
-                        Şu JSON formatında yanıt ver (başka hiçbir şey yazma):
+                        Respond in the following JSON format (write nothing else):
                         {
-                        "amount": <sayısal TRY miktarı>,
-                        "type": "EXPENSE" veya "INCOME",
-                        "category": "<mevcut kategorilerden en yakın eşleşme>",
-                        "description": "<kısa açıklama, max 100 karakter>"
+                        "amount": <numeric TRY amount>,
+                        "type": "EXPENSE" or "INCOME",
+                        "category": "<closest match from available categories>",
+                        "description": "<short description in Turkish, max 100 characters>"
                         }
 
-                        Kurallar:
-                        - amount: sadece sayı, string değil
-                        - type: harcama/gider → "EXPENSE", gelir/kazanç → "INCOME"
-                        - category: mutlaka mevcut kategorilerden biri olmalı
-                        - Mesajda miktar yoksa amount: 0 döndür`;
+                        Rules:
+                        - amount: number only, not a string
+                        - type: spending/expense → "EXPENSE", income/earnings → "INCOME"
+                        - category: must be one of the available categories
+                        - description: must be in Turkish
+                        - If no amount in the message, return amount: 0`;
 
-        const result = await generateJSON(prompt, null);
+    const result = await generateJSON(prompt, null);
 
-        if (!result || typeof result.amount !== 'number' || result.amount <= 0)
-            return {
-                pendingData: null,
-                message: 'İşlem miktarını anlayamadım. Örnek: "Yemeğe 150 TL harcadım"',
-            };
+    if (!result || typeof result.amount !== "number" || result.amount <= 0)
+      return {
+        pendingData: null,
+        message: 'İşlem tutarı anlaşılamadı. Örnek: "Markete 150 TL harcadım"',
+      };
 
-        return {
-            pendingData: {
-                type: 'transaction',
-                amount: result.amount,
-                transactionType: result.type === 'INCOME' ? 'INCOME' : 'EXPENSE',
-                category: result.category ?? 'Diğer',
-                description: result.description ?? currentInput.slice(0, 100),
-                timestamp: new Date().toISOString(),
-            },
-        };
+    return {
+      pendingData: {
+        type: "transaction",
+        amount: result.amount,
+        transactionType: result.type === "INCOME" ? "INCOME" : "EXPENSE",
+        category: result.category ?? "Other",
+        description: result.description ?? currentInput.slice(0, 100),
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }
+
+  if (classification === "GOAL_CREATION") {
+    // Try pattern-based extraction first — no Gemini call
+    const fast = extractGoalFromInput(currentInput);
+    if (fast) {
+      return {
+        pendingData: {
+          type: "goal",
+          title: fast.title,
+          target_amount: fast.target_amount,
+        },
+      };
     }
 
-    if (classification === 'GOAL_CREATION') {
-        const prompt = `Kullanıcı mesajından hedef bilgilerini çıkar.
+    // Fallback to Gemini for complex or ambiguous phrasing
+    const prompt = `Extract goal details from the user message.
 
-                        Mesaj: "${currentInput}"
+                        Message: "${currentInput}"
 
-                        Şu JSON formatında yanıt ver (başka hiçbir şey yazma):
+                        Respond in the following JSON format (write nothing else):
                         {
-                        "title": "<hedef başlığı, max 60 karakter>",
-                        "target_amount": <sayısal TRY hedef miktarı>
+                        "title": "<goal title, max 60 characters>",
+                        "target_amount": <numeric TRY target amount>
                         }
 
-                        Kurallar:
-                        - title: kısa ve anlamlı Türkçe başlık
-                        - target_amount: sadece sayı
-                        - Mesajda miktar yoksa target_amount: 0 döndür`;
+                        Rules:
+                        - title: short and meaningful title in Turkish
+                        - target_amount: number only
+                        - If no amount in the message, return target_amount: 0`;
 
-        const result = await generateJSON(prompt, null);
+    const result = await generateJSON(prompt, null);
 
-        if (!result || typeof result.target_amount !== 'number' || result.target_amount <= 0)
-            return {
-                pendingData: null,
-                message: 'Hedef miktarını anlayamadım. Örnek: "Tatil için 5000 TL biriktirmek istiyorum"',
-            };
+    if (
+      !result ||
+      typeof result.target_amount !== "number" ||
+      result.target_amount <= 0
+    )
+      return {
+        pendingData: null,
+        message:
+          'Hedef tutarı anlaşılamadı. Örnek: "Tatil için 5000 TL biriktirmek istiyorum"',
+      };
 
-        return {
-            pendingData: {
-                type: 'goal',
-                title: result.title ?? 'Yeni Hedef',
-                target_amount: result.target_amount,
-            },
-        };
-    }
+    return {
+      pendingData: {
+        type: "goal",
+        title: result.title ?? "Yeni Hedef",
+        target_amount: result.target_amount,
+      },
+    };
+  }
 
-    return { pendingData: null };
+  return { pendingData: null };
 };
