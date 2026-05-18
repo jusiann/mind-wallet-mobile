@@ -43,6 +43,19 @@ CREATE TABLE IF NOT EXISTS goals (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS savings_pledges (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    goal_id INT REFERENCES goals(id) ON DELETE CASCADE,
+    category_id INT REFERENCES categories(id) ON DELETE SET NULL,
+    amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
+    baseline_month DATE NOT NULL,
+    baseline_spent NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'RESOLVED', 'CANCELED', 'EXPIRED')),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    resolved_at TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(transaction_timestamp);
 CREATE INDEX IF NOT EXISTS idx_transactions_user_ts ON transactions(user_id, transaction_timestamp DESC);
@@ -50,3 +63,4 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_user_status ON goals(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_goals_user_status_deadline ON goals(user_id, status, deadline ASC);
 CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(user_id, category_id);
+CREATE INDEX IF NOT EXISTS idx_pledges_user_status ON savings_pledges(user_id, status);

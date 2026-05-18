@@ -1,7 +1,9 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { apiFetch, BASE_URL } from '../constants/api';
+import { apiFetch } from '../constants/api';
 import { getAccessToken } from './auth';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:3000/api';
 
 export interface Category {
     id: number;

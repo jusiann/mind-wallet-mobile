@@ -37,6 +37,11 @@ export const API_ENDPOINTS = {
     ENGINE: {
         ANALYZE: `${BASE_URL}/engine/analyze`,
     },
+    PLEDGES: {
+        LIST: `${BASE_URL}/pledges`,
+        RESOLVE: (id: number) => `${BASE_URL}/pledges/${id}/resolve`,
+        CANCEL: (id: number) => `${BASE_URL}/pledges/${id}/cancel`,
+    },
 };
 
 type FetchOptions = RequestInit & { _retry?: boolean };

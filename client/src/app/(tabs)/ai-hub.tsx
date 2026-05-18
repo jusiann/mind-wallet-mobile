@@ -35,7 +35,10 @@ export default function MindyScreen() {
     const styles = createStyles(COLORS);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
-    const [activeButtonId, setActiveButtonId] = useState<string | null>(null);
+    // msgId → seçilen buton id
+    const [selectedByMessage, setSelectedByMessage] = useState<Record<string, string>>({});
+    // Konuşma ilerleyince kilitlenen mesaj id'leri
+    const [lockedMessageIds, setLockedMessageIds] = useState<Set<string>>(new Set());
     const scrollRef = useRef<ScrollView>(null);
     const sendRef = useRef(send);
 
@@ -50,7 +53,8 @@ export default function MindyScreen() {
             return () => {
                 setMessages([]);
                 setInput('');
-                setActiveButtonId(null);
+                setSelectedByMessage({});
+                setLockedMessageIds(new Set());
             };
         }, []),
     );
@@ -59,17 +63,22 @@ export default function MindyScreen() {
         text?: string,
         payload?: Record<string, unknown>,
         buttonId?: string,
+        sourceMsgId?: string,
     ) {
         if (!text?.trim() && !payload) return;
         if (loading) return;
 
         if (payload?.action === 'cancel' || payload?.action === 'done') {
             setMessages([]);
-            setActiveButtonId(null);
+            setSelectedByMessage({});
+            setLockedMessageIds(new Set());
             return;
         }
 
-        if (buttonId) setActiveButtonId(buttonId);
+        // Tıklanan butonu seçili işaretle; aynı mesajdaki diğerleri disabled olur
+        if (buttonId && sourceMsgId) {
+            setSelectedByMessage((prev) => ({ ...prev, [sourceMsgId]: buttonId }));
+        }
 
         const historySnapshot = messages
             .map((m) => ({
@@ -92,27 +101,33 @@ export default function MindyScreen() {
             history: historySnapshot,
             buttonPayload: payload,
         });
-        if (res.success) {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: (Date.now() + 1).toString(),
-                    role: 'mindy',
-                    content: res.data!.message,
-                    buttons: res.data!.buttons ?? undefined,
-                },
-            ]);
-        } else {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: (Date.now() + 1).toString(),
-                    role: 'mindy',
-                    content: 'Bir hata oluştu. Lütfen tekrar dene.',
-                },
-            ]);
-        }
-        setActiveButtonId(null);
+
+        // Yeni mesaj geldiğinde önceki tüm mesajları kilitle
+        setMessages((prev) => {
+            const newMsg: ChatMessage = res.success
+                ? {
+                      id: (Date.now() + 1).toString(),
+                      role: 'mindy',
+                      content: res.data!.message,
+                      buttons: res.data!.buttons ?? undefined,
+                  }
+                : {
+                      id: (Date.now() + 1).toString(),
+                      role: 'mindy',
+                      content: 'Bir hata oluştu. Lütfen tekrar dene.',
+                  };
+
+            // Önceki mesajları kilitle
+            const prevIds = prev.map((m) => m.id);
+            setLockedMessageIds((locked) => {
+                const next = new Set(locked);
+                prevIds.forEach((id) => next.add(id));
+                return next;
+            });
+
+            return [...prev, newMsg];
+        });
+
         setLoading(false);
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
@@ -160,52 +175,64 @@ export default function MindyScreen() {
                     )}
 
                     {/* CHAT BUBBLES */}
-                    {messages.map((msg) => (
-                        <View
-                            key={msg.id}
-                            style={[
-                                styles.msgRow,
-                                msg.role === 'user' ? styles.msgRowUser : styles.msgRowMindy,
-                            ]}
-                        >
-                            {msg.role === 'mindy' && (
-                                <View style={styles.mindyAvatar}>
-                                    <Ionicons name='sparkles' size={13} color={COLORS.white} />
-                                </View>
-                            )}
-                            <View style={styles.bubbleCol}>
-                                <View style={[styles.bubble, msg.role === 'user' ? styles.bubbleUser : styles.bubbleMindy]}>
-                                    <Text
-                                        style={[
-                                            styles.bubbleText,
-                                            msg.role === 'user' ? styles.bubbleTextUser : styles.bubbleTextMindy,
-                                        ]}
-                                    >
-                                        {msg.content}
-                                    </Text>
-                                </View>
-                                {msg.buttons && msg.buttons.length > 0 && (
-                                    <View style={styles.buttonsWrap}>
-                                        {msg.buttons.map((btn) => {
-                                            const isActive = activeButtonId === btn.id;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={btn.id}
-                                                    style={[styles.actionBtn, isActive && styles.actionBtnActive]}
-                                                    onPress={() => send(undefined, btn.payload, btn.id)}
-                                                    disabled={loading}
-                                                >
-                                                    <Text style={[styles.actionBtnText, isActive && styles.actionBtnTextActive]}>
-                                                        {btn.label}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
+                    {messages.map((msg) => {
+                        const isLocked = lockedMessageIds.has(msg.id);
+                        return (
+                            <View
+                                key={msg.id}
+                                style={[
+                                    styles.msgRow,
+                                    msg.role === 'user' ? styles.msgRowUser : styles.msgRowMindy,
+                                ]}
+                            >
+                                {msg.role === 'mindy' && (
+                                    <View style={styles.mindyAvatar}>
+                                        <Ionicons name='sparkles' size={13} color={COLORS.white} />
                                     </View>
                                 )}
+                                <View style={styles.bubbleCol}>
+                                    <View style={[styles.bubble, msg.role === 'user' ? styles.bubbleUser : styles.bubbleMindy]}>
+                                        <Text
+                                            style={[
+                                                styles.bubbleText,
+                                                msg.role === 'user' ? styles.bubbleTextUser : styles.bubbleTextMindy,
+                                            ]}
+                                        >
+                                            {msg.content}
+                                        </Text>
+                                    </View>
+                                    {msg.buttons && msg.buttons.length > 0 && (
+                                        <View style={styles.buttonsWrap}>
+                                            {msg.buttons.map((btn) => {
+                                                const isSelected = selectedByMessage[msg.id] === btn.id;
+                                                const showDisabled = isLocked && !isSelected;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={btn.id}
+                                                        style={[
+                                                            styles.actionBtn,
+                                                            isSelected && styles.actionBtnActive,
+                                                            showDisabled && styles.actionBtnDisabled,
+                                                        ]}
+                                                        onPress={() => send(undefined, btn.payload, btn.id, msg.id)}
+                                                        disabled={loading || isLocked}
+                                                    >
+                                                        <Text style={[
+                                                            styles.actionBtnText,
+                                                            isSelected && styles.actionBtnTextActive,
+                                                            showDisabled && styles.actionBtnTextDisabled,
+                                                        ]}>
+                                                            {btn.label}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    )}
+                                </View>
                             </View>
-                        </View>
-                    ))}
+                        );
+                    })}
 
                     {/* TYPING INDICATOR */}
                     {loading && (

@@ -4,7 +4,7 @@ import { generateText } from '../../gemini.service.js';
 const END_BUTTONS = [
   {
     id: "end_analyze",
-    label: "Analiz Et",
+    label: "Aylık Özet",
     payload: { action: "start_analysis" },
   },
   {
@@ -28,6 +28,7 @@ export const responderNode = async (state) => {
     buttonPayload,
     message,
     activeGoals,
+    categoryDeltas = [],
   } = state;
 
   if (classification === "CHITCHAT") {
@@ -37,7 +38,7 @@ export const responderNode = async (state) => {
       buttons: [
         {
           id: "ch_analyze",
-          label: "Harcamaları Analiz Et",
+          label: "Aylık Özet",
           payload: { action: "start_analysis" },
         },
         {
@@ -141,6 +142,59 @@ export const responderNode = async (state) => {
     };
   }
 
+  // ── GOAL_CONTRIBUTION: doğrudan hedefe para ekleme ──────────────────────
+  if (classification === "GOAL_CONTRIBUTION") {
+    if (!pendingData || pendingData.type !== "goal_contribution")
+      return {
+        message: message || "Hedef katkısı anlaşılamadı. Lütfen tekrar dene.",
+        buttons: END_BUTTONS,
+      };
+
+    const { amount, goalId, goalTitle } = pendingData;
+
+    // Hedef bulunamadıysa kullanıcıdan seçmesini iste
+    if (!goalId && activeGoals?.length > 0) {
+      return {
+        message: `${amount.toLocaleString("tr-TR")} TL'yi hangi hedefe eklemek istersin?`,
+        buttons: [
+          ...activeGoals.slice(0, 3).map((g, i) => ({
+            id: `contrib_goal_${i}`,
+            label: g.title,
+            payload: {
+              action: "confirm_goal_contribution",
+              contribution: { goalId: g.id, goalTitle: g.title, amount },
+            },
+          })),
+          { id: "contrib_cancel", label: "İptal", payload: { action: "cancel" } },
+        ],
+      };
+    }
+
+    if (!goalId) {
+      return {
+        message: "Aktif hedefin yok. Önce bir hedef oluştur.",
+        buttons: [
+          { id: "gc_create", label: "Hedef Oluştur", payload: { action: "start_goal" } },
+        ],
+      };
+    }
+
+    return {
+      message: `${amount.toLocaleString("tr-TR")} TL'yi "${goalTitle}" hedefine ekleyeyim mi?`,
+      buttons: [
+        {
+          id: "contrib_yes",
+          label: "Evet, ekle",
+          payload: {
+            action: "confirm_goal_contribution",
+            contribution: { goalId, goalTitle, amount },
+          },
+        },
+        { id: "contrib_no", label: "İptal", payload: { action: "cancel" } },
+      ],
+    };
+  }
+
   if (buttonPayload?.action === "set_deadline") {
     const goalData =
       buttonPayload.pendingGoalData ??
@@ -177,6 +231,16 @@ export const responderNode = async (state) => {
         message: message || "Hedef detayları anlaşılamadı. Lütfen tekrar dene.",
         buttons: END_BUTTONS,
       };
+
+    // Tutar girilmemişse sor
+    if (!pendingData.target_amount || pendingData.target_amount <= 0) {
+      return {
+        message: `"${pendingData.title}" hedefi için ne kadar biriktirmek istiyorsun?`,
+        buttons: [
+          { id: "gc_cancel", label: "İptal", payload: { action: "cancel" } },
+        ],
+      };
+    }
 
     return {
       message: `${pendingData.title} için ${pendingData.target_amount.toLocaleString("tr-TR")} TL hedef belirliyoruz. Ne kadar sürede biriktirmek istersin?`,
@@ -224,28 +288,47 @@ export const responderNode = async (state) => {
   if (buttonPayload?.action === "reduce_category") {
     const cat = buttonPayload.category;
     const hasGoals = activeGoals?.length > 0;
+    const totalSpent = buttonPayload.amount ?? 0;
+    const delta = buttonPayload.delta ?? 0;
+    const half = Math.round(delta / 2);
+
+    const spentStr = Number(totalSpent).toLocaleString("tr-TR");
+    const deltaStr = Number(delta).toLocaleString("tr-TR");
+    const halfStr = Number(half).toLocaleString("tr-TR");
+
+    const catTR = toTR(cat);
+
+    let msg;
+    if (delta > 0) {
+      msg = `${catTR} harcaman bu ay geçen aya göre ${deltaStr} TL fazla (toplam ${spentStr} TL). Ne kadarını tasarruf etmek istersin?`;
+    } else {
+      msg = `${catTR} kategorisinde bu ay ${spentStr} TL harcadın. Ne yapmak istersin?`;
+    }
+
+    const savingsButtons = delta > 0 && hasGoals
+      ? [
+          {
+            id: "tip_route_all",
+            label: `Tamamını (${deltaStr} TL)`,
+            payload: { action: "route_savings", category: cat, amount: delta, categorySpent: totalSpent },
+          },
+          ...(half > 0 ? [{
+            id: "tip_route_half",
+            label: `Yarısını (${halfStr} TL)`,
+            payload: { action: "route_savings", category: cat, amount: half, categorySpent: totalSpent },
+          }] : []),
+        ]
+      : [];
 
     return {
-      message: `${cat} harcamalarını azaltmak için ne yapmak istersin?`,
+      message: msg,
       buttons: [
         {
           id: "tip_budget",
           label: "İpuçları ver",
           payload: { action: "get_tips", category: cat },
         },
-        ...(hasGoals
-          ? [
-              {
-                id: "tip_route",
-                label: "Hedefe yönlendir",
-                payload: {
-                  action: "route_savings",
-                  category: cat,
-                  amount: buttonPayload.amount,
-                },
-              },
-            ]
-          : []),
+        ...savingsButtons,
         {
           id: "tip_back",
           label: "Geri dön",
@@ -292,17 +375,18 @@ Kurallar:
 
   if (buttonPayload?.action === "route_savings") {
     const amount = buttonPayload?.amount ?? detectedSavings ?? 0;
+    const cat = buttonPayload?.category ?? null;
 
     if (activeGoals?.length > 1) {
       return {
-        message: `${amount > 0 ? `${Number(amount).toLocaleString("tr-TR")} TL tasarrufunu` : "Tasarrufunu"} hangi hedefe yönlendirmek istersin?`,
+        message: `${amount > 0 ? `${Number(amount).toLocaleString("tr-TR")} TL tasarruf taahhüdünü` : "Tasarruf taahhüdünü"} hangi hedefe yönlendirmek istersin?`,
         buttons: [
           ...activeGoals.slice(0, 3).map((g, i) => ({
             id: `route_goal_${i}`,
             label: g.title,
             payload: {
-              action: "confirm_routing",
-              route: { goalId: g.id, goalTitle: g.title, amount },
+              action: "confirm_pledge",
+              pledge: { goalId: g.id, goalTitle: g.title, amount, category: cat, categorySpent: buttonPayload?.categorySpent ?? 0 },
             },
           })),
           { id: "route_cancel", label: "Sonra", payload: { action: "cancel" } },
@@ -314,22 +398,21 @@ Kurallar:
     const route =
       optimizedRoute ??
       (targetGoal
-        ? {
-            goalId: targetGoal.id,
-            goalTitle: targetGoal.title,
-            amount,
-          }
+        ? { goalId: targetGoal.id, goalTitle: targetGoal.title, amount }
         : null);
 
     const goalTitle = route?.goalTitle ?? "hedefinize";
 
     return {
-      message: `${amount > 0 ? `${Number(amount).toLocaleString("tr-TR")} TL` : "Tasarruf"} ${goalTitle} hedefine yönlendirilsin mi?`,
+      message: `${amount > 0 ? `${Number(amount).toLocaleString("tr-TR")} TL` : "Tasarruf taahhüdü"} ${goalTitle} hedefine söz olarak eklensin mi?\n\nBu ay bu kategoride gerçekten daha az harcarsan, tutarı hedefe aktaracağım.`,
       buttons: [
         {
           id: "route_yes",
-          label: "Evet, yönlendir",
-          payload: { action: "confirm_routing", route },
+          label: "Evet, söz ver",
+          payload: {
+            action: "confirm_pledge",
+            pledge: { goalId: route?.goalId, goalTitle, amount, category: cat, categorySpent: buttonPayload?.categorySpent ?? 0 },
+          },
         },
         { id: "route_no", label: "Sonra", payload: { action: "cancel" } },
       ],
@@ -340,26 +423,16 @@ Kurallar:
     buttonPayload?.action === "back_to_analysis" ||
     buttonPayload?.action === "start_analysis"
   ) {
-    const catButtons = (wastefulCategories ?? []).slice(0, 3).map((c, i) => ({
-      id: `cat_${i}`,
-      label: `${toTR(c.name)} — ${Number(c.amount).toLocaleString("tr-TR")} TL`,
-      payload: {
-        action: "reduce_category",
-        category: c.name,
-        amount: c.amount,
-      },
-    }));
+    // categoryDeltas öncelikli, yoksa wastefulCategories
+    const catButtons = buildCategoryButtons(wastefulCategories, categoryDeltas);
     return {
       message: message || "Hangi kategoriyi azaltmak istersin?",
       buttons: catButtons.length ? catButtons : END_BUTTONS,
     };
   }
 
-  const catButtons = (wastefulCategories ?? []).slice(0, 3).map((c, i) => ({
-    id: `cat_${i}`,
-    label: `${toTR(c.name)} — ${Number(c.amount).toLocaleString("tr-TR")} TL`,
-    payload: { action: "reduce_category", category: c.name, amount: c.amount },
-  }));
+  // ── Default analysis response ──────────────────────────────────────────
+  const catButtons = buildCategoryButtons(wastefulCategories, categoryDeltas);
 
   const hasGoals = activeGoals?.length > 0;
   const hasSavings = detectedSavings > 0;
@@ -371,7 +444,7 @@ Kurallar:
     if (hasGoals && hasSavings)
       buttons.push({
         id: "route_savings_main",
-        label: `${Number(detectedSavings).toLocaleString("tr-TR")} TL → Hedefe Yönlendir`,
+        label: `${Number(detectedSavings).toLocaleString("tr-TR")} TL → Söz Ver`,
         payload: { action: "route_savings", amount: detectedSavings },
       });
     if (catButtons[0]) buttons.push(catButtons[0]);
@@ -385,7 +458,7 @@ Kurallar:
     if (hasGoals && hasSavings)
       buttons.push({
         id: "route_savings_status",
-        label: `Tasarrufu Hedefe Yönlendir`,
+        label: `${Number(detectedSavings).toLocaleString("tr-TR")} TL Tasarruf Sözü`,
         payload: { action: "route_savings", amount: detectedSavings },
       });
     else
@@ -397,7 +470,7 @@ Kurallar:
     return { message, buttons: buttons.length ? buttons : END_BUTTONS };
   }
 
-  // Default "Harcamalarımı analiz et" → all 3 category breakdown buttons
+  // Default: all 3 category breakdown buttons
   if (catButtons.length > 0) return { message, buttons: catButtons };
 
   return {
@@ -405,3 +478,27 @@ Kurallar:
     buttons: END_BUTTONS,
   };
 };
+
+// categoryDeltas varsa delta miktarı göster, yoksa wastefulCategories'deki amount
+function buildCategoryButtons(wastefulCategories = [], categoryDeltas = []) {
+  return (wastefulCategories ?? []).slice(0, 3).map((c, i) => {
+    const delta = categoryDeltas.find(
+      (d) => d.name?.toLowerCase() === c.name?.toLowerCase()
+    );
+    const displayAmount = delta ? delta.delta : c.delta ?? c.amount ?? 0;
+    const totalSpent = c.amount ?? delta?.currentSpent ?? 0;
+    const label = delta
+      ? `${toTR(c.name)} (+${Number(displayAmount).toLocaleString("tr-TR")} TL)`
+      : `${toTR(c.name)} — ${Number(displayAmount).toLocaleString("tr-TR")} TL`;
+    return {
+      id: `cat_${i}`,
+      label,
+      payload: {
+        action: "reduce_category",
+        category: c.name,
+        amount: totalSpent,
+        delta: displayAmount,
+      },
+    };
+  });
+}

@@ -12,6 +12,7 @@ const BUTTON_ONLY_ACTIONS = new Set([
   "get_tips",
   "route_savings",
   "confirm_routing",
+  "confirm_pledge",
   "set_deadline",
   "start_goal",
   "start_transaction",
@@ -29,6 +30,7 @@ const routeFromStart = (state) => {
 const routeAfterClassifier = (state) => {
   if (state.classification === "TRANSACTION") return "extractor";
   if (state.classification === "GOAL_CREATION") return "extractor";
+  if (state.classification === "GOAL_CONTRIBUTION") return "extractor";
   if (state.classification === "GOAL_STATUS") return "responder";
   if (state.classification === "CHITCHAT") return "responder";
   return "analysis";
@@ -38,6 +40,7 @@ const routeAfterExtractor = (state) => {
   if (state.classification === "TRANSACTION") return "guardrail";
   return "responder";
 };
+
 
 const graph = new StateGraph(EngineState)
   .addNode("classifier", classifierNode)

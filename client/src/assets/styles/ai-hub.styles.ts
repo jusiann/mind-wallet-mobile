@@ -120,6 +120,10 @@ const createStyles = (COLORS: any) =>
         actionBtnActive: {
             backgroundColor: COLORS.primary,
         },
+        actionBtnDisabled: {
+            backgroundColor: COLORS.surfaceContainerHighest,
+            borderColor: COLORS.surfaceContainerHighest,
+        },
         actionBtnText: {
             fontFamily: 'HankenGrotesk_500Medium',
             fontSize: 13,
@@ -128,12 +132,16 @@ const createStyles = (COLORS: any) =>
         actionBtnTextActive: {
             color: COLORS.white,
         },
+        actionBtnTextDisabled: {
+            color: COLORS.placeholderText,
+        },
         inputRow: {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 10,
             paddingHorizontal: 16,
-            paddingVertical: 12,
+            paddingTop: 12,
+            paddingBottom: Platform.OS === 'android' ? 20 : 14,
             backgroundColor: COLORS.background,
         },
         inputField: {

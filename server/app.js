@@ -11,6 +11,7 @@ import transactionRoutes from './src/routes/transaction.routes.js';
 import goalsRoutes from './src/routes/goals.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
 import engineRoutes from './src/routes/engine.routes.js';
+import pledgeRoutes from './src/routes/pledge.routes.js';
 
 const REQUIRED_ENV = [
     'JWT_SECRET_KEY', 'JWT_REFRESH_SECRET_KEY', 'JWT_RESET_SECRET_KEY',
@@ -84,6 +85,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/goals', goalsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/engine', engineRoutes);
+app.use('/api/pledges', pledgeRoutes);
 
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'Route not found' });

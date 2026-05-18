@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDashboard } from '../../store/dashboard';
 import { Goal, createGoal, deleteGoalById, getGoals } from '../../store/goals';
+import { Pledge, fetchPledges } from '../../store/pledges';
 import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
 import { pendingMessage } from '../../store/engine';
@@ -57,6 +58,8 @@ export default function GoalsScreen() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [aiInsight, setAiInsight] = useState<{ label: string; message: string } | null>(null);
+    // goalId → pending pledge miktarlarının toplamı
+    const [pendingPledgesByGoal, setPendingPledgesByGoal] = useState<Record<number, number>>({});
 
     const [detailGoal, setDetailGoal] = useState<Goal | null>(null);
 
@@ -84,6 +87,15 @@ export default function GoalsScreen() {
             loadGoals(true);
             getDashboard().then((res) => {
                 if (res.success) setAiInsight(res.data!.ai_insight);
+            });
+            fetchPledges('PENDING').then((res) => {
+                if (res.success) {
+                    const map: Record<number, number> = {};
+                    for (const p of res.data ?? []) {
+                        map[p.goal_id] = (map[p.goal_id] ?? 0) + Number(p.amount);
+                    }
+                    setPendingPledgesByGoal(map);
+                }
             });
         }, []),
     );
@@ -361,6 +373,7 @@ export default function GoalsScreen() {
                         goals.map((goal) => {
                             const pct = Math.min(Number(goal.progress_pct), 100);
                             const isCompleted = goal.status === 'COMPLETED';
+                            const pendingPledge = pendingPledgesByGoal[goal.id] ?? 0;
                             return (
                                 <TouchableOpacity
                                     key={goal.id}
@@ -373,6 +386,13 @@ export default function GoalsScreen() {
                                             <Ionicons name='flag' size={15} color={COLORS.white} />
                                         </View>
                                         <Text style={styles.goalTitle} numberOfLines={1}>{goal.title}</Text>
+                                        {pendingPledge > 0 && (
+                                            <View style={{ backgroundColor: COLORS.primaryContainer, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 6 }}>
+                                                <Text style={{ color: COLORS.primary, fontSize: 11, fontFamily: 'HankenGrotesk_500Medium' }}>
+                                                    +{Number(pendingPledge).toLocaleString('tr-TR')} TL söz
+                                                </Text>
+                                            </View>
+                                        )}
                                     </View>
                                     <Text style={styles.deadlineText}>
                                         Son tarih:{' '}
