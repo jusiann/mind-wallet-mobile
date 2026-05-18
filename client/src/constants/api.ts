@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens, setAuthState } from '../store/auth';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:3000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://mind-wallet-mobile.onrender.com/api';
 
 export const API_ENDPOINTS = {
     AUTH: {
