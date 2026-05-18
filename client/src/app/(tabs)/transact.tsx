@@ -1,1005 +1,498 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  SectionList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    SectionList,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Category,
-  Transaction,
-  createTransaction,
-  deleteTransaction,
-  exportTransactionsToFile,
-  fetchCategories,
-  fetchTransactions,
-} from "../../store/transactions";
-import { COLORS, TYPOGRAPHY } from "../../constants/theme";
+    Category,
+    Transaction,
+    createTransaction,
+    deleteTransaction,
+    exportTransactionsToFile,
+    fetchCategories,
+    fetchTransactions,
+} from '../../store/transactions';
+import { COLORS } from '../../constants/theme';
+import { useAlert } from '../../constants/alert';
+import styles from '../../assets/styles/transact.styles';
 
-// ─── Category metadata ─────────────────────────────────────────────────────────
-type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const CAT_META: Record<string, { tr: string; icon: IoniconName }> = {
-  // Expense
-  "Food & Groceries": { tr: "Market", icon: "basket-outline" },
-  "Eating Out": { tr: "Yemek", icon: "restaurant-outline" },
-  Transportation: { tr: "Ulaşım", icon: "car-outline" },
-  "Rent & Bills": { tr: "Kira", icon: "home-outline" },
-  Entertainment: { tr: "Eğlence", icon: "film-outline" },
-  Health: { tr: "Sağlık", icon: "medkit-outline" },
-  Clothing: { tr: "Giyim", icon: "shirt-outline" },
-  Education: { tr: "Eğitim", icon: "school-outline" },
-  Subscriptions: { tr: "Abonelik", icon: "repeat-outline" },
-  Other: { tr: "Diğer", icon: "ellipsis-horizontal-outline" },
-  // Income
-  Salary: { tr: "Maaş", icon: "briefcase-outline" },
-  Freelance: { tr: "Serbest", icon: "laptop-outline" },
-  Investment: { tr: "Yatırım", icon: "trending-up-outline" },
-  Gift: { tr: "Hediye", icon: "gift-outline" },
-  "Rental Income": { tr: "Kira Gel.", icon: "business-outline" },
-  Cash: { tr: "Nakit", icon: "cash-outline" },
+    'Food & Groceries': { tr: 'Market', icon: 'basket-outline' },
+    'Eating Out': { tr: 'Yemek', icon: 'restaurant-outline' },
+    Transportation: { tr: 'Ulaşım', icon: 'car-outline' },
+    'Rent & Bills': { tr: 'Kira', icon: 'home-outline' },
+    Entertainment: { tr: 'Eğlence', icon: 'film-outline' },
+    Health: { tr: 'Sağlık', icon: 'medkit-outline' },
+    Clothing: { tr: 'Giyim', icon: 'shirt-outline' },
+    Education: { tr: 'Eğitim', icon: 'school-outline' },
+    Subscriptions: { tr: 'Abonelik', icon: 'repeat-outline' },
+    Other: { tr: 'Diğer', icon: 'ellipsis-horizontal-outline' },
+    Salary: { tr: 'Maaş', icon: 'briefcase-outline' },
+    Freelance: { tr: 'Serbest', icon: 'laptop-outline' },
+    Investment: { tr: 'Yatırım', icon: 'trending-up-outline' },
+    Gift: { tr: 'Hediye', icon: 'gift-outline' },
+    'Rental Income': { tr: 'Kira Gel.', icon: 'business-outline' },
+    Cash: { tr: 'Nakit', icon: 'cash-outline' },
 };
 
-function catName(name: string) {
-  return CAT_META[name]?.tr ?? name;
-}
-function catIcon(name: string): IoniconName {
-  return CAT_META[name]?.icon ?? "wallet-outline";
+function formatCurrency(amount: string | number) {
+    return `₺${parseFloat(String(amount)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-function formatCurrency(amount: string | number) {
-  return `₺${parseFloat(String(amount)).toLocaleString("tr-TR", { minimumFractionDigits: 2 })}`;
+function formatAmountInput(raw: string): string {
+    const cleaned = raw.replace(/[^0-9,]/g, '');
+    const commaIdx = cleaned.indexOf(',');
+    const intPart = commaIdx === -1 ? cleaned : cleaned.slice(0, commaIdx);
+    const decPart = commaIdx === -1 ? '' : cleaned.slice(commaIdx + 1).replace(/,/g, '').slice(0, 2);
+    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return commaIdx === -1 ? formatted : `${formatted},${decPart}`;
 }
 
 function formatSectionDate(iso: string) {
-  return new Date(iso).toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+    return new Date(iso).toLocaleDateString('tr-TR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+    });
 }
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("tr-TR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+    return new Date(iso).toLocaleTimeString('tr-TR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+    });
 }
 
 type Enriched = Transaction & { catMeta: { tr: string; icon: IoniconName } };
 type Section = { title: string; data: Enriched[] };
 
-function buildSections(
-  transactions: Transaction[],
-  cats: Category[],
-): Section[] {
-  const catMap = new Map(cats.map((c) => [c.id, c]));
-  const enriched: Enriched[] = transactions.map((tx) => {
-    const cat = tx.category_id != null ? catMap.get(tx.category_id) : undefined;
-    return {
-      ...tx,
-      catMeta: cat
-        ? (CAT_META[cat.name] ?? {
-            tr: cat.name,
-            icon: "wallet-outline" as IoniconName,
-          })
-        : { tr: "Diğer", icon: "wallet-outline" as IoniconName },
-    };
-  });
-
-  const groups = new Map<string, Enriched[]>();
-  for (const tx of enriched) {
-    const key = formatSectionDate(tx.transaction_timestamp);
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(tx);
-  }
-  return Array.from(groups.entries()).map(([title, data]) => ({ title, data }));
-}
-
-// ─── Main screen ───────────────────────────────────────────────────────────────
-export default function TransactScreen() {
-  const [sections, setSections] = useState<Section[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [addOpen, setAddOpen] = useState(false);
-  const [initialType, setInitialType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
-  const [detailTx, setDetailTx] = useState<Enriched | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const navigation = useNavigation();
-  const router = useRouter();
-  const { openAs } = useLocalSearchParams<{ openAs?: 'EXPENSE' | 'INCOME' }>();
-
-  useEffect(() => {
-    if (openAs === 'EXPENSE' || openAs === 'INCOME') {
-      setInitialType(openAs);
-      setAddOpen(true);
-      router.setParams({ openAs: undefined });
-    }
-  }, [openAs]);
-
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.iconBtn}
-            onPress={handleExport}
-            disabled={exporting}
-          >
-            {exporting ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            ) : (
-              <Ionicons
-                name="document-text-outline"
-                size={22}
-                color={COLORS.textPrimary}
-              />
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => setAddOpen(true)}
-          >
-            <Ionicons name="add" size={22} color={COLORS.white} />
-          </TouchableOpacity>
-        </View>
-      ),
+function buildSections(transactions: Transaction[], cats: Category[]): Section[] {
+    const catMap = new Map(cats.map((c) => [c.id, c]));
+    const enriched: Enriched[] = transactions.map((tx) => {
+        const cat = tx.category_id != null ? catMap.get(tx.category_id) : undefined;
+        return {
+            ...tx,
+            catMeta: cat
+                ? (CAT_META[cat.name] ?? { tr: cat.name, icon: 'wallet-outline' as IoniconName })
+                : { tr: 'Diğer', icon: 'wallet-outline' as IoniconName },
+        };
     });
-  }, [exporting]);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [txRes, catRes] = await Promise.all([
-        fetchTransactions(),
-        fetchCategories(),
-      ]);
-      setCategories(catRes.categories);
-      setSections(buildSections(txRes.transactions, catRes.categories));
-    } catch (e: any) {
-      Alert.alert("Hata", e.message ?? "İşlemler yüklenemedi.");
-    } finally {
-      setLoading(false);
+    const groups = new Map<string, Enriched[]>();
+    for (const tx of enriched) {
+        const key = formatSectionDate(tx.transaction_timestamp);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(tx);
     }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load]),
-  );
-
-  async function handleExport() {
-    if (exporting) return;
-    setExporting(true);
-    try {
-      await exportTransactionsToFile();
-    } catch (e: any) {
-      Alert.alert("Hata", e.message ?? "Dışa aktarılamadı.");
-    } finally {
-      setExporting(false);
-    }
-  }
-
-  async function handleDelete(id: number) {
-    Alert.alert("İşlemi Sil", "Bu işlemi silmek istediğine emin misin?", [
-      { text: "İptal", style: "cancel" },
-      {
-        text: "Sil",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteTransaction(id);
-            setDetailTx(null);
-            load();
-          } catch (e: any) {
-            Alert.alert("Hata", e.message ?? "Silinemedi.");
-          }
-        },
-      },
-    ]);
-  }
-
-  return (
-    <SafeAreaView style={styles.safe} edges={[]}>
-      {/* LIST */}
-      {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      ) : sections.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="receipt-outline" size={48} color={COLORS.border} />
-          <Text style={styles.emptyText}>Henüz işlem yok.</Text>
-          <Text style={styles.emptySubText}>
-            + butonuna basarak işlem ekleyebilirsin.
-          </Text>
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled={false}
-          renderSectionHeader={({ section }) => (
-            <Text style={styles.sectionHeader}>{section.title}</Text>
-          )}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.txRow}
-              onPress={() => setDetailTx(item)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[
-                  styles.txIcon,
-                  item.type === "INCOME" && styles.txIconIncome,
-                ]}
-              >
-                <Ionicons
-                  name={item.catMeta.icon}
-                  size={18}
-                  color={item.type === "INCOME" ? "#2E7D32" : COLORS.primary}
-                />
-              </View>
-              <View style={styles.txInfo}>
-                <Text style={styles.txDesc} numberOfLines={1}>
-                  {item.description ?? item.catMeta.tr}
-                </Text>
-                <Text style={styles.txMeta}>
-                  {item.catMeta.tr} · {formatTime(item.transaction_timestamp)}
-                </Text>
-              </View>
-              <Text
-                style={[
-                  styles.txAmount,
-                  item.type === "INCOME"
-                    ? styles.amountIncome
-                    : styles.amountExpense,
-                ]}
-              >
-                {item.type === "INCOME" ? "+" : "-"}
-                {formatCurrency(item.amount)}
-              </Text>
-            </TouchableOpacity>
-          )}
-        />
-      )}
-
-      {/* ADD MODAL */}
-      <AddModal
-        visible={addOpen}
-        categories={categories}
-        initialType={initialType}
-        onClose={() => setAddOpen(false)}
-        onSaved={() => {
-          setAddOpen(false);
-          load();
-        }}
-      />
-
-      {/* DETAIL MODAL */}
-      {detailTx && (
-        <DetailModal
-          tx={detailTx}
-          onClose={() => setDetailTx(null)}
-          onDelete={() => handleDelete(detailTx.id)}
-        />
-      )}
-    </SafeAreaView>
-  );
+    return Array.from(groups.entries()).map(([title, data]) => ({ title, data }));
 }
 
-// ─── Add Transaction Modal ─────────────────────────────────────────────────────
-function AddModal({
-  visible,
-  categories,
-  initialType = 'EXPENSE',
-  onClose,
-  onSaved,
-}: {
-  visible: boolean;
-  categories: Category[];
-  initialType?: 'EXPENSE' | 'INCOME';
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [type, setType] = useState<"EXPENSE" | "INCOME">(initialType);
+export default function TransactScreen() {
+    const [sections, setSections] = useState<Section[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [exporting, setExporting] = useState(false);
 
-  useEffect(() => {
-    if (visible) setType(initialType);
-  }, [visible, initialType]);
-  const [amount, setAmount] = useState("");
-  const [selectedCatId, setSelectedCatId] = useState<number | null>(null);
-  const [description, setDescription] = useState("");
-  const [txDate, setTxDate] = useState(new Date());
-  const [saving, setSaving] = useState(false);
-  const { width: screenWidth } = useWindowDimensions();
-  const numCols = 4;
-  const chipWidth = (screenWidth - 40 - (numCols - 1) * 8) / numCols;
+    const [addOpen, setAddOpen] = useState(false);
+    const [initialType, setInitialType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+    const [addType, setAddType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+    const [addAmount, setAddAmount] = useState('');
+    const [addSelectedCatId, setAddSelectedCatId] = useState<number | null>(null);
+    const [addDescription, setAddDescription] = useState('');
+    const [addTxDate, setAddTxDate] = useState(new Date());
+    const [addSaving, setAddSaving] = useState(false);
 
-  function resetForm() {
-    setType("EXPENSE");
-    setAmount("");
-    setSelectedCatId(null);
-    setDescription("");
-    setTxDate(new Date());
-  }
+    const [detailTx, setDetailTx] = useState<Enriched | null>(null);
 
-  function close() {
-    resetForm();
-    onClose();
-  }
+    const { showAlert, alertEl } = useAlert();
+    const navigation = useNavigation();
+    const router = useRouter();
+    const { openAs } = useLocalSearchParams<{ openAs?: 'EXPENSE' | 'INCOME' }>();
+    const { width: screenWidth } = useWindowDimensions();
+    const numCols = 4;
+    const chipWidth = (screenWidth - 40 - (numCols - 1) * 8) / numCols;
 
-  function shiftDay(delta: number) {
-    const d = new Date(txDate);
-    d.setDate(d.getDate() + delta);
-    if (d <= new Date()) setTxDate(d);
-  }
+    useEffect(() => {
+        if (openAs === 'EXPENSE' || openAs === 'INCOME') {
+            setInitialType(openAs);
+            setAddType(openAs);
+            setAddOpen(true);
+            router.setParams({ openAs: undefined });
+        }
+    }, [openAs]);
 
-  async function save() {
-    const parsed = parseFloat(amount.replace(",", "."));
-    if (isNaN(parsed) || parsed <= 0) {
-      Alert.alert("Hata", "Geçerli bir tutar gir.");
-      return;
-    }
-    setSaving(true);
-    try {
-      const ts = new Date(txDate);
-      ts.setHours(new Date().getHours(), new Date().getMinutes(), 0, 0);
-      const res = await createTransaction({
-        amount: parsed,
-        type,
-        category_id: selectedCatId,
-        description: description.trim() || null,
-        transaction_timestamp: ts.toISOString(),
-      });
-      if (res.warning) Alert.alert("Uyarı", res.warning);
-      resetForm();
-      onSaved();
-    } catch (e: any) {
-      Alert.alert("Hata", e.message ?? "Kaydedilemedi.");
-    } finally {
-      setSaving(false);
-    }
-  }
+    useEffect(() => {
+        if (addOpen) setAddType(initialType);
+    }, [addOpen, initialType]);
 
-  const isToday = txDate.toDateString() === new Date().toDateString();
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={close}
-    >
-      <SafeAreaView style={styles.modalSafe} edges={["top", "bottom"]}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          {/* Modal Header */}
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={close} style={styles.modalCloseBtn}>
-              <Ionicons name="close" size={22} color={COLORS.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Yeni İşlem</Text>
-            <View style={{ width: 36 }} />
-          </View>
-
-          <ScrollView
-            contentContainerStyle={styles.modalContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Type Toggle */}
-            <View style={styles.typeToggle}>
-              <TouchableOpacity
-                style={[
-                  styles.typeBtn,
-                  type === "EXPENSE" && styles.typeBtnActiveExpense,
-                ]}
-                onPress={() => {
-                  setType("EXPENSE");
-                  setSelectedCatId(null);
-                }}
-              >
-                <View
-                  style={[
-                    styles.typeDot,
-                    {
-                      backgroundColor:
-                        type === "EXPENSE" ? "#E53935" : COLORS.border,
-                    },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.typeBtnText,
-                    type === "EXPENSE" && styles.typeBtnTextActive,
-                  ]}
-                >
-                  Gider
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.typeBtn,
-                  type === "INCOME" && styles.typeBtnActiveIncome,
-                ]}
-                onPress={() => {
-                  setType("INCOME");
-                  setSelectedCatId(null);
-                }}
-              >
-                <View
-                  style={[
-                    styles.typeDot,
-                    {
-                      backgroundColor:
-                        type === "INCOME" ? "#2E7D32" : COLORS.border,
-                    },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.typeBtnText,
-                    type === "INCOME" && styles.typeBtnTextActiveIncome,
-                  ]}
-                >
-                  Gelir
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Amount */}
-            <View style={styles.amountRow}>
-              <Text style={styles.amountSymbol}>₺</Text>
-              <TextInput
-                style={styles.amountInput}
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="0,00"
-                placeholderTextColor={COLORS.border}
-                keyboardType="decimal-pad"
-                maxLength={12}
-              />
-            </View>
-
-            {/* Category */}
-            <Text style={styles.fieldLabel}>Kategori</Text>
-            <View style={styles.catGrid}>
-              {categories
-                .filter((c) => c.applicable_to === type)
-                .map((cat) => {
-                  const meta = CAT_META[cat.name] ?? {
-                    tr: cat.name,
-                    icon: "wallet-outline" as IoniconName,
-                  };
-                  const selected = selectedCatId === cat.id;
-                  return (
-                    <TouchableOpacity
-                      key={cat.id}
-                      style={[
-                        styles.catChip,
-                        selected && styles.catChipSelected,
-                        { width: chipWidth },
-                      ]}
-                      onPress={() => setSelectedCatId(selected ? null : cat.id)}
-                    >
-                      <Ionicons
-                        name={meta.icon}
-                        size={20}
-                        color={selected ? COLORS.white : COLORS.primary}
-                      />
-                      <Text
-                        style={[
-                          styles.catChipText,
-                          selected && styles.catChipTextSelected,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {meta.tr}
-                      </Text>
+    useEffect(() => {
+        navigation.setOptions({
+            headerRight: () => (
+                <View style={styles.headerActions}>
+                    <TouchableOpacity style={styles.iconBtn} onPress={handleExport} disabled={exporting}>
+                        {exporting ? (
+                            <ActivityIndicator size='small' color={COLORS.primary} />
+                        ) : (
+                            <Ionicons name='document-text-outline' size={22} color={COLORS.textPrimary} />
+                        )}
                     </TouchableOpacity>
-                  );
-                })}
-            </View>
+                    <TouchableOpacity style={styles.addBtn} onPress={() => setAddOpen(true)}>
+                        <Ionicons name='add' size={22} color={COLORS.white} />
+                    </TouchableOpacity>
+                </View>
+            ),
+        });
+    }, [exporting]);
 
-            {/* Description */}
-            <Text style={styles.fieldLabel}>Açıklama</Text>
-            <View style={styles.descRow}>
-              <TextInput
-                style={styles.descInput}
-                value={description}
-                onChangeText={setDescription}
-                placeholder="Açıklama ekle..."
-                placeholderTextColor={COLORS.placeholderText}
-                maxLength={200}
-              />
-              <Ionicons
-                name="pencil-outline"
-                size={16}
-                color={COLORS.textSecondary}
-              />
-            </View>
+    const load = useCallback(async () => {
+        setLoading(true);
+        const [txRes, catRes] = await Promise.all([fetchTransactions(), fetchCategories()]);
+        if (!txRes.success || !catRes.success) {
+            showAlert({ title: 'Hata', message: txRes.message ?? catRes.message ?? 'İşlemler yüklenemedi.' });
+            setLoading(false);
+            return;
+        }
+        setCategories(catRes.data!.categories);
+        setSections(buildSections(txRes.data!.transactions, catRes.data!.categories));
+        setLoading(false);
+    }, []);
 
-            {/* Date */}
-            <Text style={styles.fieldLabel}>Tarih</Text>
-            <View style={styles.dateRow}>
-              <TouchableOpacity
-                onPress={() => shiftDay(-1)}
-                style={styles.dateArrow}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={18}
-                  color={COLORS.textPrimary}
+    useFocusEffect(useCallback(() => { load(); }, [load]));
+
+    async function handleExport() {
+        if (exporting) return;
+        setExporting(true);
+        const res = await exportTransactionsToFile();
+        if (!res.success) showAlert({ title: 'Hata', message: res.message ?? 'Dışa aktarılamadı.' });
+        setExporting(false);
+    }
+
+    async function handleDelete(id: number) {
+        showAlert({
+            title: 'İşlemi Sil',
+            message: 'Bu işlemi silmek istediğine emin misin?',
+            confirm: {
+                label: 'Sil',
+                destructive: true,
+                onPress: async () => {
+                    const res = await deleteTransaction(id);
+                    if (res.success) {
+                        setDetailTx(null);
+                        load();
+                    } else {
+                        showAlert({ title: 'Hata', message: res.message ?? 'Silinemedi.' });
+                    }
+                },
+            },
+        });
+    }
+
+    function resetAddForm() {
+        setAddType('EXPENSE');
+        setAddAmount('');
+        setAddSelectedCatId(null);
+        setAddDescription('');
+        setAddTxDate(new Date());
+    }
+
+    function closeAdd() {
+        resetAddForm();
+        setAddOpen(false);
+    }
+
+    function shiftDay(delta: number) {
+        const d = new Date(addTxDate);
+        d.setDate(d.getDate() + delta);
+        if (d <= new Date()) setAddTxDate(d);
+    }
+
+    async function saveAdd() {
+        const parsed = parseFloat(addAmount.replace(/\./g, '').replace(',', '.'));
+        if (isNaN(parsed) || parsed <= 0) {
+            showAlert({ title: 'Hata', message: 'Geçerli bir tutar gir.' });
+            return;
+        }
+        setAddSaving(true);
+        const ts = new Date(addTxDate);
+        ts.setHours(new Date().getHours(), new Date().getMinutes(), 0, 0);
+        const res = await createTransaction({
+            amount: parsed,
+            type: addType,
+            category_id: addSelectedCatId,
+            description: addDescription.trim() || null,
+            transaction_timestamp: ts.toISOString(),
+        });
+        if (res.success) {
+            if (res.data!.warning) showAlert({ title: 'Uyarı', message: res.data!.warning! });
+            resetAddForm();
+            setAddOpen(false);
+            load();
+        } else {
+            showAlert({ title: 'Hata', message: res.message ?? 'Kaydedilemedi.' });
+        }
+        setAddSaving(false);
+    }
+
+    const isToday = addTxDate.toDateString() === new Date().toDateString();
+
+    const addModal = (
+        <Modal
+            visible={addOpen}
+            animationType='slide'
+            presentationStyle='pageSheet'
+            onRequestClose={closeAdd}
+        >
+            <SafeAreaView style={styles.modalSafe} edges={['top', 'bottom']}>
+                <KeyboardAvoidingView
+                    style={styles.flex}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                >
+                    <View style={styles.modalHeader}>
+                        <TouchableOpacity onPress={closeAdd} style={styles.modalCloseBtn}>
+                            <Ionicons name='close' size={22} color={COLORS.textPrimary} />
+                        </TouchableOpacity>
+                        <Text style={styles.modalTitle}>Yeni İşlem</Text>
+                        <View style={styles.spacer} />
+                    </View>
+
+                    <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
+                        {/* TYPE TOGGLE */}
+                        <View style={styles.typeToggle}>
+                            <TouchableOpacity
+                                style={[styles.typeBtn, addType === 'EXPENSE' && styles.typeBtnActiveExpense]}
+                                onPress={() => { setAddType('EXPENSE'); setAddSelectedCatId(null); }}
+                            >
+                                <View style={[styles.typeDot, { backgroundColor: addType === 'EXPENSE' ? '#E53935' : COLORS.border }]} />
+                                <Text style={[styles.typeBtnText, addType === 'EXPENSE' && styles.typeBtnTextActive]}>Gider</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.typeBtn, addType === 'INCOME' && styles.typeBtnActiveIncome]}
+                                onPress={() => { setAddType('INCOME'); setAddSelectedCatId(null); }}
+                            >
+                                <View style={[styles.typeDot, { backgroundColor: addType === 'INCOME' ? '#2E7D32' : COLORS.border }]} />
+                                <Text style={[styles.typeBtnText, addType === 'INCOME' && styles.typeBtnTextActiveIncome]}>Gelir</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* AMOUNT */}
+                        <View style={styles.amountRow}>
+                            <Text style={styles.amountSymbol}>₺</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                value={addAmount}
+                                onChangeText={(t) => setAddAmount(formatAmountInput(t))}
+                                placeholder='0,00'
+                                placeholderTextColor={COLORS.border}
+                                keyboardType='decimal-pad'
+                                maxLength={12}
+                            />
+                        </View>
+
+                        {/* CATEGORY */}
+                        <Text style={styles.fieldLabel}>Kategori</Text>
+                        <View style={styles.catGrid}>
+                            {categories
+                                .filter((c) => c.applicable_to === addType)
+                                .map((cat) => {
+                                    const meta = CAT_META[cat.name] ?? { tr: cat.name, icon: 'wallet-outline' as IoniconName };
+                                    const selected = addSelectedCatId === cat.id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={cat.id}
+                                            style={[styles.catChip, selected && styles.catChipSelected, { width: chipWidth }]}
+                                            onPress={() => setAddSelectedCatId(selected ? null : cat.id)}
+                                        >
+                                            <Ionicons name={meta.icon} size={20} color={selected ? COLORS.white : COLORS.primary} />
+                                            <Text style={[styles.catChipText, selected && styles.catChipTextSelected]} numberOfLines={1}>
+                                                {meta.tr}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                        </View>
+
+                        {/* DESCRIPTION */}
+                        <Text style={styles.fieldLabel}>Açıklama</Text>
+                        <View style={styles.descRow}>
+                            <TextInput
+                                style={styles.descInput}
+                                value={addDescription}
+                                onChangeText={setAddDescription}
+                                placeholder='Açıklama ekle...'
+                                placeholderTextColor={COLORS.placeholderText}
+                                maxLength={200}
+                            />
+                            <Ionicons name='pencil-outline' size={16} color={COLORS.textSecondary} />
+                        </View>
+
+                        {/* DATE */}
+                        <Text style={styles.fieldLabel}>Tarih</Text>
+                        <View style={styles.dateRow}>
+                            <TouchableOpacity onPress={() => shiftDay(-1)} style={styles.dateArrow}>
+                                <Ionicons name='chevron-back' size={18} color={COLORS.textPrimary} />
+                            </TouchableOpacity>
+                            <Text style={styles.dateText}>
+                                {isToday
+                                    ? 'Bugün'
+                                    : addTxDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
+                            </Text>
+                            <TouchableOpacity onPress={() => shiftDay(1)} style={styles.dateArrow} disabled={isToday}>
+                                <Ionicons
+                                    name='chevron-forward'
+                                    size={18}
+                                    color={isToday ? COLORS.border : COLORS.textPrimary}
+                                />
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+
+                    <View style={styles.saveWrap}>
+                        <TouchableOpacity
+                            style={[styles.saveBtn, addSaving && styles.saveBtnDisabled]}
+                            onPress={saveAdd}
+                            disabled={addSaving}
+                        >
+                            {addSaving ? (
+                                <ActivityIndicator size='small' color={COLORS.white} />
+                            ) : (
+                                <>
+                                    <Ionicons name='checkmark-circle-outline' size={20} color={COLORS.white} />
+                                    <Text style={styles.saveBtnText}>İşlemi Kaydet</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </Modal>
+    );
+
+    const detailIsIncome = detailTx?.type === 'INCOME';
+
+    const detailModal = detailTx && (
+        <Modal visible animationType='fade' transparent onRequestClose={() => setDetailTx(null)}>
+            <View style={styles.detailOverlay}>
+                <View style={styles.detailCard}>
+                    <View style={styles.detailHeader}>
+                        <TouchableOpacity onPress={() => setDetailTx(null)} style={styles.modalCloseBtn}>
+                            <Ionicons name='close' size={22} color={COLORS.textPrimary} />
+                        </TouchableOpacity>
+                        <Text style={styles.modalTitle}>İşlem Detayı</Text>
+                        <View style={styles.spacer} />
+                    </View>
+
+                    <View style={[styles.detailIconWrap, detailIsIncome ? styles.detailIconIncome : styles.detailIconExpense]}>
+                        <Ionicons name={detailTx.catMeta.icon} size={32} color={COLORS.white} />
+                    </View>
+
+                    <Text style={[styles.detailAmount, detailIsIncome ? styles.amountIncome : styles.amountExpense]}>
+                        {detailIsIncome ? '+' : '-'}{formatCurrency(detailTx.amount)}
+                    </Text>
+                    <Text style={styles.detailType}>
+                        {detailIsIncome ? 'Gelir' : 'Gider'} · {detailTx.catMeta.tr}
+                    </Text>
+
+                    {detailTx.description ? (
+                        <View style={styles.detailRow}>
+                            <Ionicons name='chatbox-outline' size={16} color={COLORS.textSecondary} />
+                            <Text style={styles.detailRowText}>{detailTx.description}</Text>
+                        </View>
+                    ) : null}
+                    <View style={styles.detailRow}>
+                        <Ionicons name='calendar-outline' size={16} color={COLORS.textSecondary} />
+                        <Text style={styles.detailRowText}>
+                            {new Date(detailTx.transaction_timestamp).toLocaleDateString('tr-TR', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                            })}
+                            {'  '}
+                            {formatTime(detailTx.transaction_timestamp)}
+                        </Text>
+                    </View>
+
+                    <TouchableOpacity style={styles.detailDeleteBtn} onPress={() => handleDelete(detailTx.id)}>
+                        <Ionicons name='trash-outline' size={18} color={COLORS.error} />
+                        <Text style={styles.detailDeleteText}>İşlemi Sil</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+
+    return (
+        <SafeAreaView style={styles.safe} edges={[]}>
+            {loading ? (
+                <View style={styles.center}>
+                    <ActivityIndicator size='large' color={COLORS.primary} />
+                </View>
+            ) : sections.length === 0 ? (
+                <View style={styles.center}>
+                    <Ionicons name='receipt-outline' size={48} color={COLORS.border} />
+                    <Text style={styles.emptyText}>Henüz işlem yok.</Text>
+                    <Text style={styles.emptySubText}>+ butonuna basarak işlem ekleyebilirsin.</Text>
+                </View>
+            ) : (
+                <SectionList
+                    sections={sections}
+                    keyExtractor={(item) => String(item.id)}
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                    stickySectionHeadersEnabled={false}
+                    renderSectionHeader={({ section }) => (
+                        <Text style={styles.sectionHeader}>{section.title}</Text>
+                    )}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            style={styles.txRow}
+                            onPress={() => setDetailTx(item)}
+                            activeOpacity={0.7}
+                        >
+                            <View style={[styles.txIcon, item.type === 'INCOME' && styles.txIconIncome]}>
+                                <Ionicons
+                                    name={item.catMeta.icon}
+                                    size={18}
+                                    color={item.type === 'INCOME' ? '#2E7D32' : COLORS.primary}
+                                />
+                            </View>
+                            <View style={styles.txInfo}>
+                                <Text style={styles.txDesc} numberOfLines={1}>
+                                    {item.description ?? item.catMeta.tr}
+                                </Text>
+                                <Text style={styles.txMeta}>
+                                    {item.catMeta.tr} · {formatTime(item.transaction_timestamp)}
+                                </Text>
+                            </View>
+                            <Text
+                                style={[
+                                    styles.txAmount,
+                                    item.type === 'INCOME' ? styles.amountIncome : styles.amountExpense,
+                                ]}
+                            >
+                                {item.type === 'INCOME' ? '+' : '-'}{formatCurrency(item.amount)}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 />
-              </TouchableOpacity>
-              <Text style={styles.dateText}>
-                {isToday
-                  ? "Bugün"
-                  : txDate.toLocaleDateString("tr-TR", {
-                      day: "numeric",
-                      month: "long",
-                    })}
-              </Text>
-              <TouchableOpacity
-                onPress={() => shiftDay(1)}
-                style={styles.dateArrow}
-                disabled={isToday}
-              >
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={isToday ? COLORS.border : COLORS.textPrimary}
-                />
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+            )}
 
-          {/* Save Button */}
-          <View style={styles.saveWrap}>
-            <TouchableOpacity
-              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-              onPress={save}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color={COLORS.white} />
-              ) : (
-                <>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={20}
-                    color={COLORS.white}
-                  />
-                  <Text style={styles.saveBtnText}>İşlemi Kaydet</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
-  );
+            {addModal}
+            {detailModal}
+            {alertEl}
+        </SafeAreaView>
+    );
 }
-
-// ─── Detail Modal ──────────────────────────────────────────────────────────────
-function DetailModal({
-  tx,
-  onClose,
-  onDelete,
-}: {
-  tx: Enriched;
-  onClose: () => void;
-  onDelete: () => void;
-}) {
-  const isIncome = tx.type === "INCOME";
-  return (
-    <Modal visible animationType="fade" transparent onRequestClose={onClose}>
-      <View style={styles.detailOverlay}>
-        <View style={styles.detailCard}>
-          {/* Header */}
-          <View style={styles.detailHeader}>
-            <TouchableOpacity onPress={onClose} style={styles.modalCloseBtn}>
-              <Ionicons name="close" size={22} color={COLORS.textPrimary} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>İşlem Detayı</Text>
-            <View style={{ width: 36 }} />
-          </View>
-
-          {/* Icon */}
-          <View
-            style={[
-              styles.detailIconWrap,
-              isIncome ? styles.detailIconIncome : styles.detailIconExpense,
-            ]}
-          >
-            <Ionicons name={tx.catMeta.icon} size={32} color={COLORS.white} />
-          </View>
-
-          {/* Amount */}
-          <Text
-            style={[
-              styles.detailAmount,
-              isIncome ? styles.amountIncome : styles.amountExpense,
-            ]}
-          >
-            {isIncome ? "+" : "-"}
-            {formatCurrency(tx.amount)}
-          </Text>
-          <Text style={styles.detailType}>
-            {isIncome ? "Gelir" : "Gider"} · {tx.catMeta.tr}
-          </Text>
-
-          {/* Info rows */}
-          {tx.description ? (
-            <View style={styles.detailRow}>
-              <Ionicons
-                name="chatbox-outline"
-                size={16}
-                color={COLORS.textSecondary}
-              />
-              <Text style={styles.detailRowText}>{tx.description}</Text>
-            </View>
-          ) : null}
-          <View style={styles.detailRow}>
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={COLORS.textSecondary}
-            />
-            <Text style={styles.detailRowText}>
-              {new Date(tx.transaction_timestamp).toLocaleDateString("tr-TR", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-              {"  "}
-              {formatTime(tx.transaction_timestamp)}
-            </Text>
-          </View>
-
-          {/* Delete */}
-          <TouchableOpacity style={styles.detailDeleteBtn} onPress={onDelete}>
-            <Ionicons name="trash-outline" size={18} color={COLORS.error} />
-            <Text style={styles.detailDeleteText}>İşlemi Sil</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-// ─── Styles ────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
-  flex: { flex: 1 },
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
-  emptyText: {
-    ...TYPOGRAPHY.bodyMd,
-    color: COLORS.textSecondary,
-    marginTop: 8,
-  },
-  emptySubText: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 14,
-    color: COLORS.placeholderText,
-  },
-
-  // Header
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginRight: 16,
-  },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.surfaceContainerLow,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  // List
-  listContent: { paddingHorizontal: 20, paddingBottom: 24 },
-  sectionHeader: {
-    fontFamily: "HankenGrotesk_600SemiBold",
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginTop: 20,
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
-  txRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 8,
-    gap: 12,
-  },
-  txIcon: {
-    width: 36,
-    height: 36,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  txIconIncome: {},
-  txInfo: { flex: 1 },
-  txDesc: {
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 15,
-    color: COLORS.textPrimary,
-  },
-  txMeta: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  txAmount: {
-    fontFamily: "HankenGrotesk_600SemiBold",
-    fontSize: 15,
-  },
-  amountExpense: { color: "#E53935" },
-  amountIncome: { color: "#2E7D32" },
-
-  // Modal shared
-  modalSafe: { flex: 1, backgroundColor: COLORS.background },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  modalCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.surfaceContainerLow,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalTitle: {
-    fontFamily: "HankenGrotesk_600SemiBold",
-    fontSize: 17,
-    color: COLORS.textPrimary,
-  },
-  modalContent: { paddingHorizontal: 20, paddingBottom: 24, gap: 4 },
-
-  // Add form
-  typeToggle: {
-    flexDirection: "row",
-    backgroundColor: COLORS.surfaceContainerLow,
-    borderRadius: 16,
-    padding: 4,
-    marginBottom: 8,
-  },
-  typeBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  typeBtnActiveExpense: { backgroundColor: COLORS.white },
-  typeBtnActiveIncome: { backgroundColor: COLORS.white },
-  typeDot: { width: 8, height: 8, borderRadius: 4 },
-  typeBtnText: {
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  typeBtnTextActive: { color: "#E53935" },
-  typeBtnTextActiveIncome: { color: "#2E7D32" },
-
-  amountRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 20,
-  },
-  amountSymbol: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 32,
-    color: COLORS.textSecondary,
-  },
-  amountInput: {
-    fontFamily: "HankenGrotesk_700Bold",
-    fontSize: 48,
-    color: COLORS.textPrimary,
-    minWidth: 120,
-    textAlign: "center",
-  },
-
-  fieldLabel: {
-    fontFamily: "HankenGrotesk_600SemiBold",
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
-  catGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  catChip: {
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: COLORS.primaryContainer,
-    borderRadius: 14,
-    paddingVertical: 12,
-  },
-  catChipSelected: { backgroundColor: COLORS.primary },
-  catChipText: {
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 13,
-    color: COLORS.primary,
-  },
-  catChipTextSelected: { color: COLORS.white },
-
-  descRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.surfaceContainerLow,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  descInput: {
-    flex: 1,
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 15,
-    color: COLORS.textPrimary,
-  },
-
-  dateRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: COLORS.surfaceContainerLow,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  dateArrow: { padding: 2 },
-  dateText: {
-    flex: 1,
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 15,
-    color: COLORS.textPrimary,
-    textAlign: "center",
-  },
-
-  saveWrap: { paddingHorizontal: 20, paddingVertical: 12 },
-  saveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-  },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: {
-    fontFamily: "HankenGrotesk_600SemiBold",
-    fontSize: 16,
-    color: COLORS.white,
-  },
-
-  // Detail modal
-  detailOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  detailCard: {
-    width: "100%",
-    backgroundColor: COLORS.white,
-    borderRadius: 28,
-    paddingBottom: 28,
-    overflow: "hidden",
-  },
-  detailHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  detailIconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignSelf: "center",
-    alignItems: "center",
-    justifyContent: "center",
-    marginVertical: 8,
-  },
-  detailIconExpense: { backgroundColor: COLORS.primary },
-  detailIconIncome: { backgroundColor: "#2E7D32" },
-  detailAmount: {
-    fontFamily: "HankenGrotesk_700Bold",
-    fontSize: 36,
-    textAlign: "center",
-    marginTop: 8,
-  },
-  detailType: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    textAlign: "center",
-    marginTop: 4,
-    marginBottom: 20,
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 28,
-    paddingVertical: 8,
-  },
-  detailRowText: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    flex: 1,
-  },
-  detailDeleteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginHorizontal: 28,
-    marginTop: 24,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: COLORS.error,
-  },
-  detailDeleteText: {
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 15,
-    color: COLORS.error,
-  },
-});

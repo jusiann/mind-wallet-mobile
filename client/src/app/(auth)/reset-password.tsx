@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -16,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { resetPassword } from '../../store/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
+import { useAlert } from '../../constants/alert';
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
@@ -27,6 +27,7 @@ export default function ResetPasswordScreen() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const { showAlert, alertEl } = useAlert();
 
     async function handleReset() {
         if (!newPassword || !confirmPassword)
@@ -37,9 +38,15 @@ export default function ResetPasswordScreen() {
         setLoading(true);
         try {
             await resetPassword(newPassword, temporary_token!);
-            Alert.alert('Başarılı', 'Şifreniz başarıyla değiştirildi.', [
-                { text: 'Giriş Yap', onPress: () => router.replace('/(auth)/login') },
-            ]);
+            showAlert({
+                title: 'Başarılı',
+                message: 'Şifreniz başarıyla değiştirildi.',
+                confirm: {
+                    label: 'Giriş Yap',
+                    hideCancel: true,
+                    onPress: () => router.replace('/(auth)/login'),
+                },
+            });
         } catch (e: any) {
             setError(e.message);
         } finally {
@@ -161,6 +168,7 @@ export default function ResetPasswordScreen() {
                     </TouchableOpacity>
                 </ScrollView>
             </KeyboardAvoidingView>
+            {alertEl}
         </SafeAreaView>
     );
 }

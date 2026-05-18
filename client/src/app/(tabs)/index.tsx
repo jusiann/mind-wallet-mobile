@@ -1,483 +1,363 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { DashboardData, getDashboard } from "../../store/dashboard";
-import { COLORS, TYPOGRAPHY } from "../../constants/theme";
-import { getUserInitials } from "../../store/auth";
+    Animated,
+    ActivityIndicator,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
+import { DashboardData, getDashboard } from '../../store/dashboard';
+import { CategorySpend, fetchMonthlyExpensesByCategory } from '../../store/transactions';
+import { COLORS } from '../../constants/theme';
+import { getUserInitials } from '../../store/auth';
+import styles, { SCREEN_WIDTH, CHART_COLORS, CHART_SIZE, OUTER_R, INNER_R } from '../../assets/styles/dashboard.styles';
 
-const { width: screenWidth } = Dimensions.get("window");
+function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
+    const rad = ((angleDeg - 90) * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function donutSlicePath(startAngle: number, endAngle: number): string {
+    const cx = CHART_SIZE / 2;
+    const cy = CHART_SIZE / 2;
+    if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
+    const os  = polarToCartesian(cx, cy, OUTER_R, startAngle);
+    const oe  = polarToCartesian(cx, cy, OUTER_R, endAngle);
+    const is_ = polarToCartesian(cx, cy, INNER_R, startAngle);
+    const ie  = polarToCartesian(cx, cy, INNER_R, endAngle);
+    const large = endAngle - startAngle > 180 ? 1 : 0;
+    return [
+        `M ${os.x} ${os.y}`,
+        `A ${OUTER_R} ${OUTER_R} 0 ${large} 1 ${oe.x} ${oe.y}`,
+        `L ${ie.x} ${ie.y}`,
+        `A ${INNER_R} ${INNER_R} 0 ${large} 0 ${is_.x} ${is_.y}`,
+        'Z',
+    ].join(' ');
+}
 
 function formatCurrency(amount: number): string {
-  return `₺${amount.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatCurrencyShort(amount: number): string {
+    if (amount >= 1_000_000) return `₺${(amount / 1_000_000).toFixed(1)}M`;
+    if (amount >= 1_000)     return `₺${(amount / 1_000).toFixed(1)}B`;
+    return `₺${amount.toFixed(0)}`;
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("tr-TR", {
-    day: "numeric",
-    month: "short",
-  });
+    return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
 }
 
 export default function DashboardScreen() {
-  const router = useRouter();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [initials, setInitials] = useState(getUserInitials());
-  const goalsScrollRef = useRef<ScrollView>(null);
-  const goalsScrollX = useRef(new Animated.Value(0)).current;
-  const navigation = useNavigation();
+    const router     = useRouter();
+    const navigation = useNavigation();
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => router.push("/profile")}
-          style={styles.headerAvatar}
-        >
-          <Text style={styles.headerAvatarText}>{initials}</Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [initials]);
+    const [data, setData]               = useState<DashboardData | null>(null);
+    const [loading, setLoading]         = useState(true);
+    const [error, setError]             = useState('');
+    const [initials, setInitials]       = useState(getUserInitials());
+    const [categorySpend, setCategorySpend] = useState<CategorySpend[]>([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      setInitials(getUserInitials());
-      getDashboard()
-        .then((d) => {
-          setData(d);
-          setError("");
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => setLoading(false));
-    }, []),
-  );
+    const topScrollRef  = useRef<ScrollView>(null);
+    const topScrollX    = useRef(new Animated.Value(0)).current;
+    const goalsScrollRef = useRef<ScrollView>(null);
+    const goalsScrollX   = useRef(new Animated.Value(0)).current;
 
-  if (loading)
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
+    useEffect(() => {
+        navigation.setOptions({
+            headerRight: () => (
+                <TouchableOpacity onPress={() => router.push('/profile')} style={styles.headerAvatar}>
+                    <Text style={styles.headerAvatarText}>{initials}</Text>
+                </TouchableOpacity>
+            ),
+        });
+    }, [initials]);
 
-  if (error)
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-
-  const pct = data?.monthly_stats?.expense_vs_last_month_pct ?? 0;
-  const pctDown = pct <= 0;
-
-  return (
-    <SafeAreaView style={styles.safe} edges={[]}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* BALANCE CARD */}
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>BAKİYE</Text>
-          <Text style={styles.balanceAmount}>
-            {formatCurrency(data?.total_balance ?? 0)}
-          </Text>
-          <View style={styles.trendBadge}>
-            <Ionicons
-              name={pctDown ? "trending-down-outline" : "trending-up-outline"}
-              size={14}
-              color={COLORS.primary}
-            />
-            <Text style={styles.trendText}>
-              {Math.abs(pct).toFixed(1)}% Son 30 gün
-            </Text>
-          </View>
-        </View>
-
-        {/* QUICK ACTIONS */}
-        <View style={styles.actionsRow}>
-          <TouchableOpacity
-            style={[styles.actionCard, { backgroundColor: COLORS.primary }]}
-            onPress={() => router.push({ pathname: '/(tabs)/transact', params: { openAs: 'EXPENSE' } })}
-          >
-            <View
-              style={[
-                styles.actionIconCircle,
-                { backgroundColor: COLORS.white },
-              ]}
-            >
-              <Ionicons
-                name="arrow-up-outline"
-                size={22}
-                color={COLORS.primary}
-              />
-            </View>
-            <Text style={[styles.actionLabel, { color: COLORS.white }]}>
-              Harcama
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.actionCard,
-              { backgroundColor: COLORS.primaryContainer },
-            ]}
-            onPress={() => router.push({ pathname: '/(tabs)/transact', params: { openAs: 'INCOME' } })}
-          >
-            <View
-              style={[
-                styles.actionIconCircle,
-                { backgroundColor: COLORS.white },
-              ]}
-            >
-              <Ionicons
-                name="arrow-down-outline"
-                size={22}
-                color={COLORS.primary}
-              />
-            </View>
-            <Text style={[styles.actionLabel, { color: COLORS.primary }]}>
-              Gelir
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* GOALS */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Hedefler</Text>
-            <TouchableOpacity onPress={() => router.push("/(tabs)/goals")}>
-              <Text style={styles.seeAllText}>Tümü</Text>
-            </TouchableOpacity>
-          </View>
-          <Animated.ScrollView
-            ref={goalsScrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            style={styles.goalsScrollView}
-            contentContainerStyle={styles.goalsScroll}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { x: goalsScrollX } } }],
-              { useNativeDriver: false },
-            )}
-            scrollEventThrottle={16}
-          >
-            {(data?.active_goals ?? []).map((goal) => (
-              <View key={goal.id} style={styles.goalCardWrapper}>
-                <View style={styles.goalCard}>
-                  <View style={styles.goalCardTop}>
-                    <Text style={styles.goalTitle}>{goal.title}</Text>
-                    <Text style={styles.goalDeadline}>
-                      {new Date(goal.deadline).toLocaleDateString("tr-TR", {
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </Text>
-                  </View>
-                  <Text style={styles.goalAmounts}>
-                    {formatCurrency(goal.current_amount)} /{" "}
-                    {formatCurrency(goal.target_amount)}
-                  </Text>
-                  <View style={styles.progressTrack}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        {
-                          width: `${Math.min(goal.progress_pct, 100)}%` as any,
-                        },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.goalPct}>
-                    {goal.progress_pct.toFixed(0)}%
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </Animated.ScrollView>
-          {(data?.active_goals?.length ?? 0) > 1 && (
-            <View style={styles.dotsContainer}>
-              {(data?.active_goals ?? []).map((_, i) => {
-                const dotWidth = goalsScrollX.interpolate({
-                  inputRange: [
-                    (i - 1) * screenWidth,
-                    i * screenWidth,
-                    (i + 1) * screenWidth,
-                  ],
-                  outputRange: [6, 20, 6],
-                  extrapolate: "clamp",
-                });
-                const dotOpacity = goalsScrollX.interpolate({
-                  inputRange: [
-                    (i - 1) * screenWidth,
-                    i * screenWidth,
-                    (i + 1) * screenWidth,
-                  ],
-                  outputRange: [0.3, 1, 0.3],
-                  extrapolate: "clamp",
-                });
-                return (
-                  <TouchableOpacity
-                    key={i}
-                    onPress={() =>
-                      goalsScrollRef.current?.scrollTo({
-                        x: i * screenWidth,
-                        animated: true,
-                      })
+    useFocusEffect(
+        useCallback(() => {
+            setInitials(getUserInitials());
+            Promise.all([getDashboard(), fetchMonthlyExpensesByCategory()]).then(
+                ([dashRes, spendRes]) => {
+                    if (dashRes.success) {
+                        setData(dashRes.data!);
+                        setError('');
+                    } else {
+                        setError(dashRes.message ?? 'Yüklenemedi.');
                     }
-                    style={styles.dotBtn}
-                  >
-                    <Animated.View
-                      style={[
-                        styles.dot,
-                        { width: dotWidth, opacity: dotOpacity },
-                      ]}
-                    />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
+                    if (spendRes.success && spendRes.data) setCategorySpend(spendRes.data);
+                    setLoading(false);
+                },
+            );
+        }, []),
+    );
 
-        {/* RECENT TRANSACTIONS */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Akış</Text>
-            <TouchableOpacity onPress={() => router.push("/(tabs)/transact")}>
-              <Text style={styles.seeAllText}>Tümü</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.txCard}>
-            {(data?.recent_transactions ?? []).map((tx, idx, arr) => (
-              <View key={tx.id}>
-                <View style={styles.txItem}>
-                  <View style={styles.txIcon}>
-                    <Ionicons
-                      name={
-                        tx.type === "INCOME"
-                          ? "arrow-down-outline"
-                          : "arrow-up-outline"
-                      }
-                      size={18}
-                      color={COLORS.primary}
-                    />
-                  </View>
-                  <View style={styles.txInfo}>
-                    <Text style={styles.txDesc}>
-                      {tx.description || tx.category_name}
-                    </Text>
-                    <Text style={styles.txDate}>
-                      {formatDate(tx.transaction_timestamp)}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.txAmount,
-                      { color: tx.type === "INCOME" ? "#4CAF50" : "#F44336" },
-                    ]}
-                  >
-                    {tx.type === "INCOME" ? "+" : "-"}
-                    {formatCurrency(tx.amount)}
-                  </Text>
+    const spendTotal = categorySpend.reduce((s, c) => s + c.amount, 0);
+    let _angle = 0;
+    const spendSlices = categorySpend.slice(0, CHART_COLORS.length).map((cat, i) => {
+        const sweep = spendTotal > 0 ? (cat.amount / spendTotal) * 360 : 0;
+        const path  = donutSlicePath(_angle, _angle + sweep);
+        _angle += sweep;
+        return { path, color: CHART_COLORS[i] };
+    });
+
+    return (
+        <SafeAreaView style={styles.safe} edges={[]}>
+            {loading ? (
+                <View style={styles.center}>
+                    <ActivityIndicator size='large' color={COLORS.primary} />
                 </View>
-                {idx < arr.length - 1 && <View style={styles.txSeparator} />}
-              </View>
-            ))}
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+            ) : error ? (
+                <View style={styles.center}>
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            ) : (
+                <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
+                    {/* TOP CARDS SCROLL */}
+                    <View style={styles.topSection}>
+                        <Animated.ScrollView
+                            ref={topScrollRef}
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.topScrollView}
+                            onScroll={Animated.event(
+                                [{ nativeEvent: { contentOffset: { x: topScrollX } } }],
+                                { useNativeDriver: false },
+                            )}
+                            scrollEventThrottle={16}
+                        >
+                            {/* SLIDE 1 — BALANCE CARD */}
+                            <View style={styles.topCardWrapper}>
+                                <View style={styles.balanceCard}>
+                                    <View style={styles.balanceTop}>
+                                        <Text style={styles.balanceLabel}>BAKİYE</Text>
+                                        <Text style={styles.balanceAmount}>
+                                            {formatCurrency(data?.total_balance ?? 0)}
+                                        </Text>
+                                    </View>
+                                    <View style={styles.trendBadge}>
+                                        <Ionicons
+                                            name={
+                                                (data?.monthly_stats?.expense_vs_last_month_pct ?? 0) <= 0
+                                                    ? 'trending-down-outline'
+                                                    : 'trending-up-outline'
+                                            }
+                                            size={14}
+                                            color={COLORS.primary}
+                                        />
+                                        <Text style={styles.trendText}>
+                                            {Math.abs(data?.monthly_stats?.expense_vs_last_month_pct ?? 0).toFixed(1)}% Son 30 gün
+                                        </Text>
+                                    </View>
+                                </View>
+                            </View>
+
+                            {/* SLIDE 2 — CHART CARD */}
+                            <View style={styles.topCardWrapper}>
+                                <View style={styles.chartCard}>
+                                    {categorySpend.length === 0 ? (
+                                        <Text style={styles.chartEmpty}>Bu ay henüz harcama yok.</Text>
+                                    ) : (
+                                        <View style={styles.chartCardRow}>
+                                            {/* DONUT CHART */}
+                                            <View style={styles.chartPieWrap}>
+                                                <Svg width={CHART_SIZE} height={CHART_SIZE}>
+                                                    {spendSlices.map((s, i) => (
+                                                        <Path key={i} d={s.path} fill={s.color} />
+                                                    ))}
+                                                </Svg>
+                                                <View style={styles.chartPieCenter}>
+                                                    <Text style={styles.chartPieCenterAmt}>
+                                                        {formatCurrencyShort(spendTotal)}
+                                                    </Text>
+                                                    <Text style={styles.chartPieCenterLbl}>gider</Text>
+                                                </View>
+                                            </View>
+
+                                            {/* CATEGORY LIST */}
+                                            <View style={styles.chartCatList}>
+                                                {categorySpend.slice(0, 5).map((cat, i) => (
+                                                    <View key={cat.rawName} style={styles.chartCatRow}>
+                                                        <View style={[styles.chartCatDot, { backgroundColor: CHART_COLORS[i] }]} />
+                                                        <Text style={styles.chartCatName} numberOfLines={1}>{cat.name}</Text>
+                                                        <Text style={styles.chartCatAmt}>{formatCurrencyShort(cat.amount)}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        </Animated.ScrollView>
+
+                        {/* DOTS */}
+                        <View style={styles.dotsContainer}>
+                            {[0, 1].map((i) => {
+                                const range = [(i - 1) * SCREEN_WIDTH, i * SCREEN_WIDTH, (i + 1) * SCREEN_WIDTH];
+                                const dotWidth = topScrollX.interpolate({
+                                    inputRange: range, outputRange: [6, 20, 6], extrapolate: 'clamp',
+                                });
+                                const dotOpacity = topScrollX.interpolate({
+                                    inputRange: range, outputRange: [0.3, 1, 0.3], extrapolate: 'clamp',
+                                });
+                                return (
+                                    <TouchableOpacity
+                                        key={i}
+                                        onPress={() => topScrollRef.current?.scrollTo({ x: i * SCREEN_WIDTH, animated: true })}
+                                        style={styles.dotBtn}
+                                    >
+                                        <Animated.View style={[styles.dot, { width: dotWidth, opacity: dotOpacity }]} />
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </View>
+
+                    {/* QUICK ACTIONS */}
+                    <View style={styles.actionsRow}>
+                        <TouchableOpacity
+                            style={[styles.actionCard, styles.actionCardExpense]}
+                            onPress={() => router.push({ pathname: '/(tabs)/transact', params: { openAs: 'EXPENSE' } })}
+                        >
+                            <View style={styles.actionIconCircle}>
+                                <Ionicons name='arrow-up-outline' size={22} color={COLORS.primary} />
+                            </View>
+                            <Text style={[styles.actionLabel, { color: COLORS.white }]}>Harcama</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.actionCard, styles.actionCardIncome]}
+                            onPress={() => router.push({ pathname: '/(tabs)/transact', params: { openAs: 'INCOME' } })}
+                        >
+                            <View style={styles.actionIconCircle}>
+                                <Ionicons name='arrow-down-outline' size={22} color={COLORS.primary} />
+                            </View>
+                            <Text style={[styles.actionLabel, { color: COLORS.primary }]}>Gelir</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* GOALS */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Hedefler</Text>
+                            <TouchableOpacity onPress={() => router.push('/(tabs)/goals')}>
+                                <Text style={styles.seeAllText}>Tümü</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.topSection}>
+                            <Animated.ScrollView
+                                ref={goalsScrollRef}
+                                horizontal
+                                pagingEnabled
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.goalsScrollView}
+                                contentContainerStyle={styles.goalsScroll}
+                                onScroll={Animated.event(
+                                    [{ nativeEvent: { contentOffset: { x: goalsScrollX } } }],
+                                    { useNativeDriver: false },
+                                )}
+                                scrollEventThrottle={16}
+                            >
+                                {(data?.active_goals ?? []).map((goal) => (
+                                    <View key={goal.id} style={styles.goalCardWrapper}>
+                                        <View style={styles.goalCard}>
+                                            <View style={styles.goalCardTop}>
+                                                <Text style={styles.goalTitle}>{goal.title}</Text>
+                                                <Text style={styles.goalDeadline}>
+                                                    {new Date(goal.deadline).toLocaleDateString('tr-TR', {
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                    })}
+                                                </Text>
+                                            </View>
+                                            <Text style={styles.goalAmounts}>
+                                                {formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}
+                                            </Text>
+                                            <View style={styles.progressTrack}>
+                                                <View
+                                                    style={[
+                                                        styles.progressFill,
+                                                        { width: `${Math.min(goal.progress_pct, 100)}%` as any },
+                                                    ]}
+                                                />
+                                            </View>
+                                            <Text style={styles.goalPct}>{goal.progress_pct.toFixed(0)}%</Text>
+                                        </View>
+                                    </View>
+                                ))}
+                            </Animated.ScrollView>
+                            {(data?.active_goals?.length ?? 0) > 1 && (
+                                <View style={styles.dotsContainer}>
+                                    {(data?.active_goals ?? []).map((_, i) => {
+                                        const range = [(i - 1) * SCREEN_WIDTH, i * SCREEN_WIDTH, (i + 1) * SCREEN_WIDTH];
+                                        const dotWidth = goalsScrollX.interpolate({
+                                            inputRange: range, outputRange: [6, 20, 6], extrapolate: 'clamp',
+                                        });
+                                        const dotOpacity = goalsScrollX.interpolate({
+                                            inputRange: range, outputRange: [0.3, 1, 0.3], extrapolate: 'clamp',
+                                        });
+                                        return (
+                                            <TouchableOpacity
+                                                key={i}
+                                                onPress={() => goalsScrollRef.current?.scrollTo({ x: i * SCREEN_WIDTH, animated: true })}
+                                                style={styles.dotBtn}
+                                            >
+                                                <Animated.View style={[styles.dot, { width: dotWidth, opacity: dotOpacity }]} />
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
+                    </View>
+
+                    {/* RECENT TRANSACTIONS */}
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Akış</Text>
+                            <TouchableOpacity onPress={() => router.push('/(tabs)/transact')}>
+                                <Text style={styles.seeAllText}>Tümü</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.txCard}>
+                            {(data?.recent_transactions ?? []).map((tx, idx, arr) => (
+                                <View key={tx.id}>
+                                    <View style={styles.txItem}>
+                                        <View style={styles.txIcon}>
+                                            <Ionicons
+                                                name={tx.type === 'INCOME' ? 'arrow-down-outline' : 'arrow-up-outline'}
+                                                size={18}
+                                                color={COLORS.primary}
+                                            />
+                                        </View>
+                                        <View style={styles.txInfo}>
+                                            <Text style={styles.txDesc}>{tx.description || tx.category_name}</Text>
+                                            <Text style={styles.txDate}>{formatDate(tx.transaction_timestamp)}</Text>
+                                        </View>
+                                        <Text
+                                            style={[
+                                                styles.txAmount,
+                                                tx.type === 'INCOME' ? styles.txAmountIncome : styles.txAmountExpense,
+                                            ]}
+                                        >
+                                            {tx.type === 'INCOME' ? '+' : '-'}
+                                            {formatCurrency(tx.amount)}
+                                        </Text>
+                                    </View>
+                                    {idx < arr.length - 1 && <View style={styles.txSeparator} />}
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+
+                </ScrollView>
+            )}
+        </SafeAreaView>
+    );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.background,
-  },
-  errorText: { ...TYPOGRAPHY.bodyMd, color: COLORS.error },
-
-  headerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.textPrimary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  headerAvatarText: {
-    fontFamily: "HankenGrotesk_700Bold",
-    fontSize: 13,
-    color: COLORS.white,
-  },
-
-  scroll: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 32, gap: 20 },
-
-  balanceCard: {
-    backgroundColor: COLORS.textPrimary,
-    borderRadius: 24,
-    padding: 28,
-    gap: 8,
-  },
-  balanceLabel: {
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 12,
-    letterSpacing: 1.5,
-    color: "rgba(255,255,255,0.6)",
-  },
-  balanceAmount: { ...TYPOGRAPHY.numericXl, color: COLORS.white },
-  trendBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginTop: 4,
-    backgroundColor: "rgba(103,80,164,0.2)",
-  },
-  trendText: {
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 13,
-    color: COLORS.primary,
-  },
-
-  actionsRow: { flexDirection: "row", gap: 12 },
-  actionCard: {
-    flex: 1,
-    borderRadius: 20,
-    paddingVertical: 20,
-    alignItems: "center",
-    gap: 10,
-  },
-  actionIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionLabel: { fontFamily: "HankenGrotesk_600SemiBold", fontSize: 14 },
-
-  section: { gap: 12 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    ...TYPOGRAPHY.headlineMd,
-    fontSize: 20,
-    color: COLORS.textPrimary,
-  },
-  seeAllText: { ...TYPOGRAPHY.labelMd, color: COLORS.primary },
-
-  goalsScrollView: { marginHorizontal: -20 },
-  goalsScroll: { paddingBottom: 8 },
-  goalCardWrapper: { width: screenWidth, paddingHorizontal: 20 },
-  goalCard: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 20,
-    gap: 10,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  dotsContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  dotBtn: { padding: 4 },
-  dot: { height: 6, borderRadius: 3, backgroundColor: COLORS.primary },
-  goalCardTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  goalDeadline: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 11,
-    color: COLORS.textSecondary,
-  },
-  goalTitle: {
-    fontFamily: "HankenGrotesk_600SemiBold",
-    fontSize: 18,
-    color: COLORS.textPrimary,
-  },
-  goalPct: {
-    fontFamily: "HankenGrotesk_700Bold",
-    fontSize: 13,
-    color: COLORS.primary,
-  },
-  progressTrack: {
-    height: 5,
-    backgroundColor: COLORS.surfaceContainerHigh,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressFill: { height: 5, backgroundColor: COLORS.primary, borderRadius: 3 },
-  goalAmounts: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-
-  txCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  txSeparator: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginHorizontal: 14,
-  },
-  txItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-  },
-  txIcon: { width: 24, alignItems: "center", justifyContent: "center" },
-  txInfo: { flex: 1, gap: 2 },
-  txDesc: {
-    fontFamily: "HankenGrotesk_500Medium",
-    fontSize: 15,
-    color: COLORS.textPrimary,
-  },
-  txDate: {
-    fontFamily: "HankenGrotesk_400Regular",
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  txAmount: { fontFamily: "HankenGrotesk_600SemiBold", fontSize: 15 },
-});

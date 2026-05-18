@@ -12,9 +12,9 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { checkResetCode, forgotPassword } from '../../store/auth';
 import styles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
+import { checkResetCode, forgotPassword } from '../../store/auth';
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
@@ -137,7 +137,7 @@ export default function ForgotPasswordScreen() {
                                         <TextInput
                                             style={styles.input}
                                             value={code}
-                                            onChangeText={setCode}
+                                            onChangeText={(t) => setCode(t.toUpperCase())}
                                             keyboardType="default"
                                             autoCapitalize="characters"
                                             maxLength={8}

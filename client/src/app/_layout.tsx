@@ -50,7 +50,6 @@ function RootNavigator() {
             {/* PROTECTED ROUTES */}
             <Stack.Protected guard={authenticated}>
                 <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="profile" />
             </Stack.Protected>
 
             {/* PUBLIC ROUTES */}

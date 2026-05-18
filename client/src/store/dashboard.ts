@@ -24,6 +24,9 @@ export interface DashboardData {
     active_goals: DashboardGoal[];
     recent_transactions: DashboardTransaction[];
     monthly_stats: {
+        total_income: number;
+        total_expense: number;
+        net: number;
         expense_vs_last_month_pct: number | null;
     };
     ai_insight: {
@@ -32,6 +35,11 @@ export interface DashboardData {
     };
 }
 
-export function getDashboard(): Promise<DashboardData> {
-    return apiFetch<{ success: boolean; data: DashboardData }>('/dashboard').then(res => res.data);
+export async function getDashboard(): Promise<{ success: boolean; data?: DashboardData; message?: string }> {
+    try {
+        const res = await apiFetch<{ success: boolean; data: DashboardData }>('/dashboard');
+        return { success: true, data: res.data };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Bir hata oluştu.' };
+    }
 }

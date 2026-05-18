@@ -21,14 +21,24 @@ export interface Transaction {
     created_at: string;
 }
 
-export async function fetchTransactions(limit = 100, offset = 0): Promise<{ transactions: Transaction[]; total: number }> {
-    return apiFetch<{ success: boolean; transactions: Transaction[]; total: number }>(
-        `/transactions?limit=${limit}&offset=${offset}`
-    );
+export async function fetchTransactions(limit = 100, offset = 0): Promise<{ success: boolean; data?: { transactions: Transaction[]; total: number }; message?: string }> {
+    try {
+        const res = await apiFetch<{ success: boolean; transactions: Transaction[]; total: number }>(
+            `/transactions?limit=${limit}&offset=${offset}`
+        );
+        return { success: true, data: { transactions: res.transactions, total: res.total } };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Bir hata oluştu.' };
+    }
 }
 
-export async function fetchCategories(): Promise<{ categories: Category[] }> {
-    return apiFetch<{ success: boolean; categories: Category[] }>('/transactions/categories');
+export async function fetchCategories(): Promise<{ success: boolean; data?: { categories: Category[] }; message?: string }> {
+    try {
+        const res = await apiFetch<{ success: boolean; categories: Category[] }>('/transactions/categories');
+        return { success: true, data: { categories: res.categories } };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Bir hata oluştu.' };
+    }
 }
 
 export async function createTransaction(body: {
@@ -37,37 +47,100 @@ export async function createTransaction(body: {
     category_id?: number | null;
     description?: string | null;
     transaction_timestamp: string;
-}): Promise<{ transaction: Transaction; warning: string | null }> {
-    return apiFetch<{ success: boolean; transaction: Transaction; warning: string | null }>(
-        '/transactions',
-        { method: 'POST', body: JSON.stringify(body) }
-    );
+}): Promise<{ success: boolean; data?: { transaction: Transaction; warning: string | null }; message?: string }> {
+    try {
+        const res = await apiFetch<{ success: boolean; transaction: Transaction; warning: string | null }>(
+            '/transactions',
+            { method: 'POST', body: JSON.stringify(body) }
+        );
+        return { success: true, data: { transaction: res.transaction, warning: res.warning } };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Bir hata oluştu.' };
+    }
 }
 
-export async function deleteTransaction(id: number): Promise<void> {
-    await apiFetch<{ success: boolean }>(`/transactions/${id}`, { method: 'DELETE' });
+export async function deleteTransaction(id: number): Promise<{ success: boolean; message?: string }> {
+    try {
+        await apiFetch<{ success: boolean }>(`/transactions/${id}`, { method: 'DELETE' });
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Bir hata oluştu.' };
+    }
 }
 
-export async function exportTransactionsToFile(): Promise<void> {
-    const token = await getAccessToken();
-    const fileUri = `${FileSystem.documentDirectory}mind-wallet-transactions.xlsx`;
+const CAT_TR: Record<string, string> = {
+    'Food & Groceries': 'Market',
+    'Eating Out': 'Yemek',
+    Transportation: 'Ulaşım',
+    'Rent & Bills': 'Kira',
+    Entertainment: 'Eğlence',
+    Health: 'Sağlık',
+    Clothing: 'Giyim',
+    Education: 'Eğitim',
+    Subscriptions: 'Abonelik',
+    Other: 'Diğer',
+};
 
-    const res = await FileSystem.downloadAsync(
-        `${BASE_URL}/transactions/export`,
-        fileUri,
-        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
-    );
+export interface CategorySpend {
+    name: string;
+    rawName: string;
+    amount: number;
+}
 
-    if (res.status !== 200)
-        throw new Error('Dışa aktarma başarısız.');
+export async function fetchMonthlyExpensesByCategory(): Promise<{
+    success: boolean;
+    data?: CategorySpend[];
+    message?: string;
+}> {
+    try {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const [txRes, catRes] = await Promise.all([
+            apiFetch<{ success: boolean; transactions: Transaction[]; total: number }>(
+                `/transactions?type=EXPENSE&start_date=${encodeURIComponent(start)}&limit=500`,
+            ),
+            apiFetch<{ success: boolean; categories: Category[] }>('/transactions/categories'),
+        ]);
+        const catMap = new Map(catRes.categories.map((c: Category) => [c.id, c.name]));
+        const totals = new Map<string, number>();
+        for (const tx of txRes.transactions) {
+            const raw = tx.category_id != null ? (catMap.get(tx.category_id) ?? 'Other') : 'Other';
+            totals.set(raw, (totals.get(raw) ?? 0) + parseFloat(String(tx.amount)));
+        }
+        const data: CategorySpend[] = Array.from(totals.entries())
+            .map(([rawName, amount]) => ({ name: CAT_TR[rawName] ?? rawName, rawName, amount }))
+            .sort((a, b) => b.amount - a.amount);
+        return { success: true, data };
+    } catch (e: any) {
+        return { success: false, message: e.message };
+    }
+}
 
-    const canShare = await Sharing.isAvailableAsync();
-    if (!canShare)
-        throw new Error('Paylaşım bu cihazda desteklenmiyor.');
+export async function exportTransactionsToFile(): Promise<{ success: boolean; message?: string }> {
+    try {
+        const token = await getAccessToken();
+        const fileUri = `${FileSystem.documentDirectory}mind-wallet-transactions.xlsx`;
 
-    await Sharing.shareAsync(res.uri, {
-        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        dialogTitle: 'Mind Wallet İşlemleri',
-        UTI: 'com.microsoft.excel.xlsx',
-    });
+        const res = await FileSystem.downloadAsync(
+            `${BASE_URL}/transactions/export`,
+            fileUri,
+            { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+        );
+
+        if (res.status !== 200)
+            throw new Error('Dışa aktarma başarısız.');
+
+        const canShare = await Sharing.isAvailableAsync();
+        if (!canShare)
+            throw new Error('Paylaşım bu cihazda desteklenmiyor.');
+
+        await Sharing.shareAsync(res.uri, {
+            mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            dialogTitle: 'Mind Wallet İşlemleri',
+            UTI: 'com.microsoft.excel.xlsx',
+        });
+        return { success: true };
+    } catch (error: any) {
+        return { success: false, message: error.message || 'Bir hata oluştu.' };
+    }
 }

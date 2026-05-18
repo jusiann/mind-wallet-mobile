@@ -1,4 +1,5 @@
 import { toTR } from '../categoryMap.js';
+import { generateText } from '../../gemini.service.js';
 
 const END_BUTTONS = [
   {
@@ -15,26 +16,6 @@ const END_BUTTONS = [
   { id: "end_done", label: "Hayır, teşekkürler", payload: { action: "done" } },
 ];
 
-function getCategoryTips(category) {
-  const c = (category ?? "").toLowerCase();
-  if (/yemek|restoran|kafe|cafe|coffee|food|sipariş/.test(c))
-    return "Öğle yemeğini evden götür ve haftada 2 gün dışarıda yemekten vazgeç — aylık %30-40 tasarruf sağlayabilirsin. Yemek siparişi yerine market alışverişini tercih et.";
-  if (/market|bakkal|alışveriş|grocery|süpermarket/.test(c))
-    return "Alışverişe liste yaparak git ve açken gitme. İndirimli günleri (pazar sabahı) takip et. Marka ürünler yerine zincir market markalarını dene.";
-  if (/ulaşım|taksi|otobüs|metro|transport|yakıt|benzin/.test(c))
-    return "Toplu taşıma aboneliği al, bireysel seyahat yerine karpool tercih et. Kısa mesafelerde yürü ya da bisiklet kullan.";
-  if (/eğlence|sinema|oyun|entertainment|müzik|netflix|dizi/.test(c))
-    return "Abonelikleri gözden geçir ve kullanmadıklarını iptal et. Ücretsiz etkinlikleri (park, sergi, kütüphane) değerlendir. Abonelikleri arkadaşlarla paylaş.";
-  if (/giyim|kıyafet|moda|clothing|ayakkabı/.test(c))
-    return "Sezon sonu indirimlerini bekle ve alışverişi planlı yap. İkinci el platformlarını dene. Her ay giyim için sabit bütçe belirle.";
-  if (/fatura|kira|elektrik|su|internet|bill|doğalgaz/.test(c))
-    return "Elektrik tasarrufu için LED ampul kullan, gereksiz cihazları fişten çek. İnternet ve telefon tarifelerini karşılaştır, daha uygun paketlere geç.";
-  if (/sağlık|spor|health|ilaç|eczane/.test(c))
-    return "Reçeteli ilaçlarda jenerik alternatifleri sor. Spor için açık alan ve ücretsiz antrenmanları değerlendir. Düzenli check-up ile ilerideki masrafları önle.";
-  if (/kafe|kahve|çay|starbucks/.test(c))
-    return "Kahveyi evde hazırlayarak haftada birkaç kez kafe ziyaretini azalt. Termos kullan, ofiste veya dışarıda kendi kahveni götür.";
-  return `${category} için aylık harcama limiti belirle ve her hafta kontrol et. Zorunlu olmayan harcamaları 24 saat bekletme kuralıyla filtrele — gerçekten ihtiyacın var mı diye sor.`;
-}
 
 export const responderNode = async (state) => {
   const {
@@ -137,11 +118,12 @@ export const responderNode = async (state) => {
       };
 
     const { amount, transactionType, category, description } = pendingData;
+    const categoryLabel = toTR(category);
     const typeLabel = transactionType === "INCOME" ? "gelir" : "gider";
 
     let msg = warning
-      ? `${warning}\n\n${amount.toLocaleString("tr-TR")} TL tutarındaki ${category} ${typeLabel}ini yine de kaydedeyim mi?`
-      : `${amount.toLocaleString("tr-TR")} TL tutarındaki ${category} ${typeLabel}ini kaydedeyim mi?`;
+      ? `${warning}\n\n${amount.toLocaleString("tr-TR")} TL tutarındaki ${categoryLabel} ${typeLabel}ini yine de kaydedeyim mi?`
+      : `${amount.toLocaleString("tr-TR")} TL tutarındaki ${categoryLabel} ${typeLabel}ini kaydedeyim mi?`;
 
     if (description && description !== state.currentInput)
       msg += ` (${description})`;
@@ -275,8 +257,35 @@ export const responderNode = async (state) => {
 
   if (buttonPayload?.action === "get_tips") {
     const cat = buttonPayload.category ?? "";
+    const catTR = toTR(cat);
+
+    const catTxs = (state.pastTransactions ?? [])
+      .filter((t) => t.type === "EXPENSE" && t.category_name?.toLowerCase() === cat.toLowerCase())
+      .slice(0, 15);
+    const totalSpent = catTxs.reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const txSummary = catTxs.length > 0
+      ? `Son 30 günde ${catTxs.length} işlem, toplam ${totalSpent.toLocaleString("tr-TR")} TL.`
+      : "Bu kategoride son 30 günde kayıtlı harcama yok.";
+
+    const goalsSummary = (state.activeGoals ?? []).length > 0
+      ? `Aktif hedefler: ${state.activeGoals.map((g) => `${g.title} — hedef ${Number(g.target_amount).toLocaleString("tr-TR")} TL, %${Number(g.progress_pct).toFixed(0)} tamamlandı`).join("; ")}.`
+      : "";
+
+    const prompt = `Kullanıcı "${catTR}" kategorisindeki harcamalarını azaltmak istiyor.
+
+Kategori harcama özeti: ${txSummary}
+${goalsSummary}
+
+Bu kategorideki harcamaları azaltmak için 2-3 pratik öneri yaz.
+Kurallar:
+- Türkçe, samimi ve kısa yaz (toplam 3-5 cümle)
+- Kullanıcının gerçek harcama verisine ve hedeflerine göre kişiselleştir
+- Madde işareti veya numara kullanma, düz paragraf yaz`;
+
+    const tips = await generateText(prompt, null);
     return {
-      message: `${cat} harcamalarını azaltmak için ipuçları:\n\n${getCategoryTips(cat)}`,
+      message: `${catTR} harcamalarını azaltmak için öneriler:\n\n${tips ?? "Öneri üretilemedi, lütfen tekrar dene."}`,
       buttons: END_BUTTONS,
     };
   }

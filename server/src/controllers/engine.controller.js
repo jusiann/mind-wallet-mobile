@@ -3,6 +3,7 @@ import db from "../lib/db/database.js";
 import { engineGraph } from "../services/engine/graph.js";
 import { createTransactionRecord } from "./transaction.controller.js";
 import { createGoalRecord } from "./goals.controller.js";
+import { toTR } from "../services/engine/categoryMap.js";
 
 const sanitizeInput = (str) =>
   str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
@@ -74,7 +75,7 @@ export const analyze = async (req, res) => {
       );
       return quickReply(
         res,
-        `Kaydedildi. ${tx.amount.toLocaleString("tr-TR")} TL ${tx.category ?? ""} işlemi eklendi.`,
+        `Kaydedildi. ${tx.amount.toLocaleString("tr-TR")} TL ${toTR(tx.category ?? "")} işlemi eklendi.`,
         [
           {
             id: "end_analyze",

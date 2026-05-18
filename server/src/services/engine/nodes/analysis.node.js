@@ -1,4 +1,5 @@
 import { generateJSON } from "../../gemini.service.js";
+import { toTR } from "../categoryMap.js";
 
 const NO_DATA_FALLBACK = {
   detectedSavings: 0,
@@ -7,52 +8,12 @@ const NO_DATA_FALLBACK = {
   label: "Normal",
 };
 
-function computeBasicAnalysis(expenses, input = "") {
-  const total = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
-
-  const byCategory = {};
-  for (const t of expenses) {
-    const cat = t.category_name ?? "Diğer";
-    byCategory[cat] = (byCategory[cat] ?? 0) + Number(t.amount);
-  }
-  const top3 = Object.entries(byCategory)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([name, amount]) => ({
-      name,
-      amount,
-      suggestion: "Bu kategorideki harcamaları gözden geçir.",
-    }));
-
-  const savings = Math.round(total * 0.15);
-  const totalStr = Number(total).toLocaleString("tr-TR");
-
-  let message;
-  if (/tasarruf/i.test(input)) {
-    const tip = top3[0]
-      ? `${top3[0].name} harcamalarını azaltarak aylık yaklaşık ${Number(Math.round(top3[0].amount * 0.3)).toLocaleString("tr-TR")} TL tasarruf edebilirsin.`
-      : "Harcama kategorilerini inceleyerek tasarruf alanları bulabilirsin.";
-    message = `Bu ay ${totalStr} TL harcama yaptın. Tasarruf potansiyeli: ~${Number(savings).toLocaleString("tr-TR")} TL. ${tip}`;
-  } else if (/nasıl gidiy|bu ay|durum/i.test(input)) {
-    const topCat = top3[0]
-      ? `En yüksek harcama ${top3[0].name} kategorisinde: ${Number(top3[0].amount).toLocaleString("tr-TR")} TL.`
-      : "";
-    message =
-      `Bu ay toplam ${totalStr} TL harcama yaptın. ${topCat} ${savings > 0 ? `Yaklaşık ${Number(savings).toLocaleString("tr-TR")} TL tasarruf edebilirsin.` : ""}`.trim();
-  } else {
-    const breakdown = top3
-      .map((c) => `${c.name}: ${Number(c.amount).toLocaleString("tr-TR")} TL`)
-      .join(" • ");
-    message = `Son 30 günde ${totalStr} TL harcama yaptın. Kategori dağılımı: ${breakdown || "veri yok"}.`;
-  }
-
-  return {
-    detectedSavings: savings,
-    wastefulCategories: top3,
-    message,
-    label: savings > 500 ? "Opportunity" : "Normal",
-  };
-}
+const ANALYSIS_ERROR_FALLBACK = {
+  detectedSavings: 0,
+  wastefulCategories: [],
+  message: "Analiz şu an yapılamadı, lütfen tekrar dene.",
+  label: "Normal",
+};
 
 export const analysisNode = async (state) => {
   const expenses =
@@ -109,21 +70,19 @@ export const analysisNode = async (state) => {
 
   try {
     const result = await generateJSON(prompt, null);
-    if (!result) return computeBasicAnalysis(expenses, state.currentInput);
+    if (!result) return ANALYSIS_ERROR_FALLBACK;
 
     const detectedSavings =
       typeof result.detectedSavings === "number" ? result.detectedSavings : 0;
     return {
       detectedSavings,
       wastefulCategories: Array.isArray(result.wastefulCategories)
-        ? result.wastefulCategories
+        ? result.wastefulCategories.map((c) => ({ ...c, name: toTR(c.name) }))
         : [],
-      message:
-        result.message ??
-        computeBasicAnalysis(expenses, state.currentInput).message,
+      message: result.message ?? ANALYSIS_ERROR_FALLBACK.message,
       label: detectedSavings > 500 ? "Opportunity" : "Normal",
     };
   } catch {
-    return computeBasicAnalysis(expenses, state.currentInput);
+    return ANALYSIS_ERROR_FALLBACK;
   }
 };
