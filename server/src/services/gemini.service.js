@@ -6,6 +6,12 @@ const GEMINI_TIMEOUT_MS = 30_000;
 export const getModel = () =>
     genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash' });
 
+const getJsonModel = () =>
+    genAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash',
+        generationConfig: { responseMimeType: 'application/json' },
+    });
+
 const withTimeout = (promise, ms = GEMINI_TIMEOUT_MS) =>
     Promise.race([
         promise,
@@ -27,12 +33,16 @@ const withRetry = async (fn, retries = 3, baseDelayMs = 500) => {
 };
 
 export const generateJSON = async (prompt, fallback = null) => {
-    const model = getModel();
+    const model = getJsonModel();
     const result = await withRetry(() => withTimeout(model.generateContent(prompt)));
     const text = result.response.text().replace(/```json|```/g, '').trim();
     try {
         return JSON.parse(text);
     } catch {
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+            try { return JSON.parse(match[0]); } catch { /* fall through */ }
+        }
         return fallback;
     }
 };

@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { changePassword, deleteAccount, getMe, logout, updateProfile } from '../../store/auth';
-import styles from '../../assets/styles/profile.styles';
+import createStyles from '../../assets/styles/profile.styles';
 import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
 
 export default function ProfileScreen() {
     const router = useRouter();
+    const styles = createStyles(COLORS);
     const { showAlert, alertEl } = useAlert();
 
     const [user, setUser] = useState<{ name: string; email: string } | null>(null);
@@ -145,7 +146,7 @@ export default function ProfileScreen() {
                 <View style={styles.spacer} />
             </View>
 
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kbdAvoid}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.kbdAvoid}>
                 <ScrollView
                     contentContainerStyle={styles.scroll}
                     showsVerticalScrollIndicator={false}
@@ -241,31 +242,32 @@ export default function ProfileScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* LOGOUT */}
-                    <TouchableOpacity
-                        style={[styles.logoutBtn, logoutLoading && styles.btnDisabled]}
-                        onPress={handleLogout}
-                        disabled={logoutLoading}
-                    >
-                        {logoutLoading
-                            ? <ActivityIndicator color={COLORS.error} />
-                            : (
-                                <>
-                                    <Text style={styles.logoutText}>Çıkış Yap</Text>
-                                    <Ionicons name='log-out-outline' size={16} color={COLORS.error} />
-                                </>
-                            )
-                        }
-                    </TouchableOpacity>
+                    {/* LOGOUT + DELETE ROW */}
+                    <View style={styles.bottomActionsRow}>
+                        <TouchableOpacity
+                            style={styles.deleteAccountToggle}
+                            onPress={() => { setShowDeleteSection(p => !p); setDeleteError(''); setDeletePassword(''); }}
+                        >
+                            <Text style={styles.deleteAccountToggleText}>Hesabımı Sil</Text>
+                            <Ionicons name='trash-outline' size={15} color={COLORS.textSecondary} />
+                        </TouchableOpacity>
 
-                    {/* DELETE ACCOUNT */}
-                    <TouchableOpacity
-                        style={styles.deleteAccountToggle}
-                        onPress={() => { setShowDeleteSection(p => !p); setDeleteError(''); setDeletePassword(''); }}
-                    >
-                        <Text style={styles.deleteAccountToggleText}>Hesabımı Sil</Text>
-                        <Ionicons name='trash-outline' size={15} color={COLORS.textSecondary} />
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.logoutBtn, logoutLoading && styles.btnDisabled]}
+                            onPress={handleLogout}
+                            disabled={logoutLoading}
+                        >
+                            {logoutLoading
+                                ? <ActivityIndicator color={COLORS.error} />
+                                : (
+                                    <>
+                                        <Text style={styles.logoutText}>Çıkış Yap</Text>
+                                        <Ionicons name='log-out-outline' size={15} color={COLORS.error} />
+                                    </>
+                                )
+                            }
+                        </TouchableOpacity>
+                    </View>
 
                     {showDeleteSection && (
                         <View style={styles.deleteSection}>

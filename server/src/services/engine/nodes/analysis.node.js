@@ -82,7 +82,13 @@ export const analysisNode = async (state) => {
       message: result.message ?? ANALYSIS_ERROR_FALLBACK.message,
       label: detectedSavings > 500 ? "Opportunity" : "Normal",
     };
-  } catch {
+  } catch (err) {
+    if (err?.status === 429) {
+      return {
+        ...ANALYSIS_ERROR_FALLBACK,
+        message: "Mindy şu an çok yoğun, biraz bekleyip tekrar dener misin? 🙏",
+      };
+    }
     return ANALYSIS_ERROR_FALLBACK;
   }
 };

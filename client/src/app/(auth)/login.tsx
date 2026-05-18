@@ -12,12 +12,13 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import styles from '../../assets/styles/auth.styles';
+import createStyles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
 import { login } from '../../store/auth';
 
 export default function LoginScreen() {
     const router = useRouter();
+    const styles = createStyles(COLORS);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);

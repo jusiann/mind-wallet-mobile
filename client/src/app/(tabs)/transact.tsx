@@ -26,7 +26,7 @@ import {
 } from '../../store/transactions';
 import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
-import styles from '../../assets/styles/transact.styles';
+import createStyles from '../../assets/styles/transact.styles';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -103,6 +103,7 @@ function buildSections(transactions: Transaction[], cats: Category[]): Section[]
 
 export default function TransactScreen() {
     const [sections, setSections] = useState<Section[]>([]);
+    const styles = createStyles(COLORS);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
@@ -237,10 +238,22 @@ export default function TransactScreen() {
             transaction_timestamp: ts.toISOString(),
         });
         if (res.success) {
-            if (res.data!.warning) showAlert({ title: 'Uyarı', message: res.data!.warning! });
             resetAddForm();
-            setAddOpen(false);
-            load();
+            const askAnother = () => showAlert({
+                title: 'İşlem Kaydedildi',
+                message: 'Başka işlem yapmak ister misin?',
+                onCancel: () => { setAddOpen(false); load(); },
+                confirm: { label: 'Evet', cancelLabel: 'Hayır', onPress: () => {} },
+            });
+            if (res.data!.warning) {
+                showAlert({
+                    title: 'Uyarı',
+                    message: res.data!.warning!,
+                    confirm: { label: 'Tamam', hideCancel: true, onPress: askAnother },
+                });
+            } else {
+                askAnother();
+            }
         } else {
             showAlert({ title: 'Hata', message: res.message ?? 'Kaydedilemedi.' });
         }

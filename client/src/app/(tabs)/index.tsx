@@ -12,10 +12,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { DashboardData, getDashboard } from '../../store/dashboard';
-import { CategorySpend, fetchMonthlyExpensesByCategory } from '../../store/transactions';
+import { CategorySpend, fetchMonthlyExpensesByCategory, translateCat } from '../../store/transactions';
 import { COLORS } from '../../constants/theme';
 import { getUserInitials } from '../../store/auth';
-import styles, { SCREEN_WIDTH, CHART_COLORS, CHART_SIZE, OUTER_R, INNER_R } from '../../assets/styles/dashboard.styles';
+import { pendingMessage } from '../../store/engine';
+import createStyles, { SCREEN_WIDTH, CHART_COLORS, CHART_SIZE, OUTER_R, INNER_R } from '../../assets/styles/dashboard.styles';
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
     const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -57,6 +58,7 @@ function formatDate(iso: string): string {
 export default function DashboardScreen() {
     const router     = useRouter();
     const navigation = useNavigation();
+    const styles = createStyles(COLORS);
 
     const [data, setData]               = useState<DashboardData | null>(null);
     const [loading, setLoading]         = useState(true);
@@ -142,19 +144,31 @@ export default function DashboardScreen() {
                                             {formatCurrency(data?.total_balance ?? 0)}
                                         </Text>
                                     </View>
-                                    <View style={styles.trendBadge}>
-                                        <Ionicons
-                                            name={
-                                                (data?.monthly_stats?.expense_vs_last_month_pct ?? 0) <= 0
-                                                    ? 'trending-down-outline'
-                                                    : 'trending-up-outline'
-                                            }
-                                            size={14}
-                                            color={COLORS.primary}
-                                        />
-                                        <Text style={styles.trendText}>
-                                            {Math.abs(data?.monthly_stats?.expense_vs_last_month_pct ?? 0).toFixed(1)}% Son 30 gün
-                                        </Text>
+                                    <View style={styles.cardBottomRow}>
+                                        <View style={styles.trendBadge}>
+                                            <Ionicons
+                                                name={
+                                                    (data?.monthly_stats?.expense_vs_last_month_pct ?? 0) <= 0
+                                                        ? 'trending-down-outline'
+                                                        : 'trending-up-outline'
+                                                }
+                                                size={14}
+                                                color={COLORS.primary}
+                                            />
+                                            <Text style={styles.trendText}>
+                                                {Math.abs(data?.monthly_stats?.expense_vs_last_month_pct ?? 0).toFixed(1)}% Son 30 gün
+                                            </Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            style={styles.mindyBtn}
+                                            onPress={() => {
+                                                pendingMessage.set('Bu ayki finansal durumumu analiz et ve önerilerini paylaş.');
+                                                router.push('/(tabs)/ai-hub');
+                                            }}
+                                        >
+                                            <Ionicons name='sparkles' size={13} color={COLORS.white} />
+                                            <Text style={styles.mindyBtnText}>Mindy'e Sor</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
                             </View>
@@ -337,7 +351,7 @@ export default function DashboardScreen() {
                                             />
                                         </View>
                                         <View style={styles.txInfo}>
-                                            <Text style={styles.txDesc}>{tx.description || tx.category_name}</Text>
+                                            <Text style={styles.txDesc}>{tx.description || translateCat(tx.category_name)}</Text>
                                             <Text style={styles.txDate}>{formatDate(tx.transaction_timestamp)}</Text>
                                         </View>
                                         <Text

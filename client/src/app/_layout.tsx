@@ -26,7 +26,7 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
                 const token = await getAccessToken();
                 if (token) {
                     const res = await getMe();
-                    setUserName(res.user.name);
+                    setUserName(res.name);
                     setAuthState(true);
                 }
             } catch {
@@ -46,7 +46,7 @@ function RootNavigator() {
     useEffect(() => subscribeAuthState(setAuthenticated), []);
 
     return (
-        <Stack key={String(authenticated)} screenOptions={{ headerShown: false }}>
+        <Stack screenOptions={{ headerShown: false }}>
             {/* PROTECTED ROUTES */}
             <Stack.Protected guard={authenticated}>
                 <Stack.Screen name="(tabs)" />

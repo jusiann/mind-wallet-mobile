@@ -23,14 +23,33 @@ interface AnalyzeParams {
     buttonPayload?: Record<string, unknown>;
 }
 
+let _pending: string | null = null;
+
+export const pendingMessage = {
+    set: (msg: string) => {
+        _pending = msg;
+    },
+    take: () => {
+        const m = _pending;
+        _pending = null;
+        return m;
+    },
+};
+
 export async function analyzeEngine(params: AnalyzeParams): Promise<{ success: boolean; data?: EngineResponse; message?: string }> {
     try {
         const res = await apiFetch<{ success: boolean; data: EngineResponse }>('/engine/analyze', {
             method: 'POST',
             body: JSON.stringify(params),
         });
-        return { success: true, data: res.data };
+        return {
+            success: true,
+            data: res.data,
+        };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Bir hata oluştu.' };
+        return {
+            success: false,
+            message: error.message || 'Bir hata oluştu.',
+        };
     }
 }

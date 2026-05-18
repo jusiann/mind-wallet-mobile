@@ -24,13 +24,14 @@ function extractGoalFromInput(input) {
   if (amount <= 0) return null;
 
   const NOISE =
-    /\b(için|hedefi?|biriktirmek|istiyorum|biriktir|tasarruf|etmek|kaydet|oluştur|tl|lira|₺)\b/gi;
-  const title = input
+    /\b(için|hedefi?|biriktirmek|istiyorum|biriktir|birikim|tasarruf|etmek|kaydet|oluştur|almak|yapmak|gitmek|satın|tl|lira|₺)\b/gi;
+  const raw = input
     .replace(fullMatch[0], "")
     .replace(NOISE, " ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 60);
+  const title = raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "";
 
   return { title: title || "Yeni Hedef", target_amount: amount };
 }
@@ -103,12 +104,12 @@ export const extractorNode = async (state) => {
 
                         Respond in the following JSON format (write nothing else):
                         {
-                        "title": "<goal title, max 60 characters>",
+                        "title": "<1-3 kelimelik kısa başlık, sadece ana konu — örn: 'Motorsiklet', 'Tatil', 'Araba', 'Ev Peşinatı'>",
                         "target_amount": <numeric TRY target amount>
                         }
 
                         Rules:
-                        - title: short and meaningful title in Turkish
+                        - title: 1-3 kelime, sadece tasarruf edilmek istenen şeyin adı, Türkçe
                         - target_amount: number only
                         - If no amount in the message, return target_amount: 0`;
 

@@ -43,7 +43,7 @@ export default function TabsLayout() {
             <Tabs.Screen name="ai-hub"   options={{ title: 'Mind Wallet', tabBarLabel: label('Mindy'),     tabBarIcon: icon('sparkles-outline', 'sparkles') }} />
             <Tabs.Screen name="transact" options={{ title: 'Mind Wallet', tabBarLabel: label('Transact'),  tabBarIcon: icon('swap-horizontal-outline', 'swap-horizontal') }} />
             <Tabs.Screen name="goals"    options={{ title: 'Mind Wallet', tabBarLabel: label('Hedefler'),  tabBarIcon: icon('flag-outline', 'flag') }} />
-            <Tabs.Screen name="profile"  options={{ href: null }} />
+            <Tabs.Screen name="profile"  options={{ href: null, headerShown: false }} />
         </Tabs>
     );
 }

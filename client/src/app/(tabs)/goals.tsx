@@ -17,8 +17,8 @@ import { getDashboard } from '../../store/dashboard';
 import { Goal, createGoal, deleteGoalById, getGoals } from '../../store/goals';
 import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
-import { pendingMessage } from '../../store/pendingMessage';
-import styles from '../../assets/styles/goals.styles';
+import { pendingMessage } from '../../store/engine';
+import createStyles from '../../assets/styles/goals.styles';
 
 function formatCurrency(amount: number) {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -50,6 +50,7 @@ const STATUS_LABELS: Record<Goal['status'], string> = {
 export default function GoalsScreen() {
     const router = useRouter();
     const navigation = useNavigation();
+    const styles = createStyles(COLORS);
     const { showAlert, alertEl } = useAlert();
 
     const [goals, setGoals] = useState<Goal[]>([]);

@@ -5,11 +5,13 @@ import { COLORS, TYPOGRAPHY } from './theme';
 interface AlertConfig {
     title: string;
     message?: string;
+    onCancel?: () => void;
     confirm?: {
         label: string;
         onPress: () => void;
         destructive?: boolean;
         hideCancel?: boolean;
+        cancelLabel?: string;
     };
 }
 
@@ -24,8 +26,14 @@ export function useAlert() {
         setConfig(null);
     }
 
+    function cancel() {
+        const cb = config?.onCancel;
+        setConfig(null);
+        cb?.();
+    }
+
     const alertEl = config ? (
-        <Modal visible transparent animationType="fade" onRequestClose={dismiss}>
+        <Modal visible transparent animationType="fade" onRequestClose={cancel}>
             <View style={s.overlay}>
                 <View style={s.card}>
                     <Text style={s.title}>{config.title}</Text>
@@ -36,8 +44,10 @@ export function useAlert() {
                         {config.confirm ? (
                             <>
                                 {!config.confirm.hideCancel && (
-                                    <TouchableOpacity style={s.actionBtn} onPress={dismiss}>
-                                        <Text style={s.cancelText}>İptal</Text>
+                                    <TouchableOpacity style={s.actionBtn} onPress={cancel}>
+                                        <Text style={s.cancelText}>
+                                            {config.confirm.cancelLabel ?? 'İptal'}
+                                        </Text>
                                     </TouchableOpacity>
                                 )}
                                 <TouchableOpacity

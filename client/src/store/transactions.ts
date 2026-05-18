@@ -21,23 +21,69 @@ export interface Transaction {
     created_at: string;
 }
 
+export interface CategorySpend {
+    name: string;
+    rawName: string;
+    amount: number;
+}
+
+const CAT_TR: Record<string, string> = {
+    'Food & Groceries': 'Market',
+    'Eating Out': 'Yemek',
+    Transportation: 'Ulaşım',
+    'Rent & Bills': 'Kira',
+    Entertainment: 'Eğlence',
+    Health: 'Sağlık',
+    Clothing: 'Giyim',
+    Education: 'Eğitim',
+    Subscriptions: 'Abonelik',
+    Other: 'Diğer',
+    Salary: 'Maaş',
+    Freelance: 'Serbest',
+    Investment: 'Yatırım',
+    Gift: 'Hediye',
+    'Rental Income': 'Kira Geliri',
+    Cash: 'Nakit',
+};
+
+export function translateCat(name: string): string {
+    return CAT_TR[name] ?? name;
+}
+
 export async function fetchTransactions(limit = 100, offset = 0): Promise<{ success: boolean; data?: { transactions: Transaction[]; total: number }; message?: string }> {
     try {
         const res = await apiFetch<{ success: boolean; transactions: Transaction[]; total: number }>(
             `/transactions?limit=${limit}&offset=${offset}`
         );
-        return { success: true, data: { transactions: res.transactions, total: res.total } };
+        return {
+            success: true,
+            data: {
+                transactions: res.transactions,
+                total: res.total,
+            },
+        };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Bir hata oluştu.' };
+        return {
+            success: false,
+            message: error.message || 'Bir hata oluştu.',
+        };
     }
 }
 
 export async function fetchCategories(): Promise<{ success: boolean; data?: { categories: Category[] }; message?: string }> {
     try {
         const res = await apiFetch<{ success: boolean; categories: Category[] }>('/transactions/categories');
-        return { success: true, data: { categories: res.categories } };
+        return {
+            success: true,
+            data: {
+                categories: res.categories,
+            },
+        };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Bir hata oluştu.' };
+        return {
+            success: false,
+            message: error.message || 'Bir hata oluştu.',
+        };
     }
 }
 
@@ -53,38 +99,33 @@ export async function createTransaction(body: {
             '/transactions',
             { method: 'POST', body: JSON.stringify(body) }
         );
-        return { success: true, data: { transaction: res.transaction, warning: res.warning } };
+        return {
+            success: true,
+            data: {
+                transaction: res.transaction,
+                warning: res.warning,
+            },
+        };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Bir hata oluştu.' };
+        return {
+            success: false,
+            message: error.message || 'Bir hata oluştu.',
+        };
     }
 }
 
 export async function deleteTransaction(id: number): Promise<{ success: boolean; message?: string }> {
     try {
         await apiFetch<{ success: boolean }>(`/transactions/${id}`, { method: 'DELETE' });
-        return { success: true };
+        return {
+            success: true,
+        };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Bir hata oluştu.' };
+        return {
+            success: false,
+            message: error.message || 'Bir hata oluştu.',
+        };
     }
-}
-
-const CAT_TR: Record<string, string> = {
-    'Food & Groceries': 'Market',
-    'Eating Out': 'Yemek',
-    Transportation: 'Ulaşım',
-    'Rent & Bills': 'Kira',
-    Entertainment: 'Eğlence',
-    Health: 'Sağlık',
-    Clothing: 'Giyim',
-    Education: 'Eğitim',
-    Subscriptions: 'Abonelik',
-    Other: 'Diğer',
-};
-
-export interface CategorySpend {
-    name: string;
-    rawName: string;
-    amount: number;
 }
 
 export async function fetchMonthlyExpensesByCategory(): Promise<{
@@ -110,9 +151,15 @@ export async function fetchMonthlyExpensesByCategory(): Promise<{
         const data: CategorySpend[] = Array.from(totals.entries())
             .map(([rawName, amount]) => ({ name: CAT_TR[rawName] ?? rawName, rawName, amount }))
             .sort((a, b) => b.amount - a.amount);
-        return { success: true, data };
+        return {
+            success: true,
+            data,
+        };
     } catch (e: any) {
-        return { success: false, message: e.message };
+        return {
+            success: false,
+            message: e.message,
+        };
     }
 }
 
@@ -139,8 +186,13 @@ export async function exportTransactionsToFile(): Promise<{ success: boolean; me
             dialogTitle: 'Mind Wallet İşlemleri',
             UTI: 'com.microsoft.excel.xlsx',
         });
-        return { success: true };
+        return {
+            success: true,
+        };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Bir hata oluştu.' };
+        return {
+            success: false,
+            message: error.message || 'Bir hata oluştu.',
+        };
     }
 }

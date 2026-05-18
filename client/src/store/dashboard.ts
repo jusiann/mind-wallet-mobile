@@ -38,8 +38,14 @@ export interface DashboardData {
 export async function getDashboard(): Promise<{ success: boolean; data?: DashboardData; message?: string }> {
     try {
         const res = await apiFetch<{ success: boolean; data: DashboardData }>('/dashboard');
-        return { success: true, data: res.data };
+        return {
+            success: true,
+            data: res.data,
+        };
     } catch (error: any) {
-        return { success: false, message: error.message || 'Bir hata oluştu.' };
+        return {
+            success: false,
+            message: error.message || 'Bir hata oluştu.',
+        };
     }
 }

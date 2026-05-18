@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { pendingMessage } from '../../store/pendingMessage';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -13,9 +12,9 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { EngineButton, analyzeEngine } from '../../store/engine';
+import createStyles from '../../assets/styles/ai-hub.styles';
 import { COLORS } from '../../constants/theme';
-import styles from '../../assets/styles/ai-hub.styles';
+import { EngineButton, analyzeEngine, pendingMessage } from '../../store/engine';
 
 interface ChatMessage {
     id: string;
@@ -33,6 +32,7 @@ const SUGGESTIONS = [
 
 export default function MindyScreen() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const styles = createStyles(COLORS);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [activeButtonId, setActiveButtonId] = useState<string | null>(null);
@@ -120,9 +120,9 @@ export default function MindyScreen() {
     return (
         <SafeAreaView style={styles.safe} edges={[]}>
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior='padding'
                 style={styles.flex}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
             >
                 {/* MESSAGES */}
                 <ScrollView

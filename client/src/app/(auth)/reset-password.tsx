@@ -12,10 +12,10 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { resetPassword } from '../../store/auth';
-import styles from '../../assets/styles/auth.styles';
-import { COLORS } from '../../constants/theme';
+import createStyles from '../../assets/styles/auth.styles';
 import { useAlert } from '../../constants/alert';
+import { COLORS } from '../../constants/theme';
+import { resetPassword } from '../../store/auth';
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
@@ -27,6 +27,7 @@ export default function ResetPasswordScreen() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const styles = createStyles(COLORS);
     const { showAlert, alertEl } = useAlert();
 
     async function handleReset() {

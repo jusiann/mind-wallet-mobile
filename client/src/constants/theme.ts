@@ -1,19 +1,15 @@
-// ─── Colors — Material You / Single Fixed Lilac-Purple Theme ─────────────────
 export const COLORS = {
-    // Primary
     primary: '#6750A4',
     primaryDark: '#4F378B',
     onPrimary: '#FFFFFF',
     primaryContainer: '#EADDFF',
     onPrimaryContainer: '#21005D',
 
-    // Secondary
     secondary: '#625B71',
     onSecondary: '#FFFFFF',
     secondaryContainer: '#E8DEF8',
     onSecondaryContainer: '#1D192B',
 
-    // Surfaces
     background: '#FEF7FF',
     surface: '#FEF7FF',
     surfaceContainerLowest: '#FFFFFF',
@@ -22,34 +18,27 @@ export const COLORS = {
     surfaceContainerHigh: '#ECE6F0',
     surfaceContainerHighest: '#E6E0E9',
 
-    // Text
     textPrimary: '#1C1B1F',
     textSecondary: '#49454F',
     textDark: '#1C1B1F',
     placeholderText: '#79747E',
 
-    // Borders & Outlines
     border: '#CAC4D0',
     borderStrong: '#79747E',
 
-    // Input
     inputBackground: '#F7F2FA',
 
-    // Card
     cardBackground: '#FFFFFF',
 
-    // Error
     error: '#B3261E',
     onError: '#FFFFFF',
     errorContainer: '#F9DEDC',
 
-    // Utility
     white: '#FFFFFF',
     black: '#000000',
     transparent: 'transparent',
 } as const;
 
-// ─── Typography — Hanken Grotesk scale ────────────────────────────────────────
 export const TYPOGRAPHY = {
     displayLg: {
         fontFamily: 'HankenGrotesk_700Bold',
@@ -95,7 +84,6 @@ export const TYPOGRAPHY = {
     },
 } as const;
 
-// ─── Spacing — 8px base grid ──────────────────────────────────────────────────
 export const SPACING = {
     unit: 8,
     stackSm: 8,

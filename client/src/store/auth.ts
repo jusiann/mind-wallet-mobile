@@ -1,8 +1,39 @@
 import * as SecureStore from 'expo-secure-store';
-import { BASE_URL } from '../constants/base';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:3000/api';
+
+export interface AuthUser {
+    id: number;
+    name: string;
+    email: string;
+}
+
+export interface AuthTokens {
+    access_token: string;
+    refresh_token: string;
+    user: AuthUser;
+}
 
 const ACCESS_KEY = 'mw_access_token';
 const REFRESH_KEY = 'mw_refresh_token';
+
+let _userName = '';
+let _authenticated = false;
+const _listeners = new Set<(authenticated: boolean) => void>();
+
+async function authFetch<T = unknown>(url: string, options: RequestInit = {}): Promise<T> {
+    const token = await getAccessToken();
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    const res = await fetch(url, { ...options, headers });
+    const json = await res.json();
+    if (!res.ok)
+        throw new Error(json.error || json.message || 'Bir hata oluştu.');
+    return json as T;
+}
 
 export async function saveTokens(accessToken: string, refreshToken: string) {
     await SecureStore.setItemAsync(ACCESS_KEY, accessToken);
@@ -21,10 +52,6 @@ export function getAccessToken(): Promise<string | null> {
 export function getRefreshToken(): Promise<string | null> {
     return SecureStore.getItemAsync(REFRESH_KEY);
 }
-
-let _userName = '';
-let _authenticated = false;
-const _listeners = new Set<(authenticated: boolean) => void>();
 
 export function setUserName(name: string) {
     _userName = name;
@@ -52,32 +79,6 @@ export function subscribeAuthState(listener: (authenticated: boolean) => void) {
     };
 }
 
-async function authFetch<T = unknown>(url: string, options: RequestInit = {}): Promise<T> {
-    const token = await getAccessToken();
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...(options.headers as Record<string, string>),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-    const res = await fetch(url, { ...options, headers });
-    const json = await res.json();
-    if (!res.ok)
-        throw new Error(json.error || json.message || 'Bir hata oluştu.');
-    return json as T;
-}
-
-export interface AuthUser {
-    id: number;
-    name: string;
-    email: string;
-}
-
-export interface AuthTokens {
-    access_token: string;
-    refresh_token: string;
-    user: AuthUser;
-}
-
 export async function login(email: string, password: string): Promise<AuthUser> {
     const data = await authFetch<AuthTokens>(`${BASE_URL}/auth/signin`, {
         method: 'POST',
@@ -103,7 +104,7 @@ export async function register(fullname: string, email: string, password: string
 export async function logout(): Promise<void> {
     try {
         await authFetch(`${BASE_URL}/auth/logout`, { method: 'POST' });
-    } catch { /* server logout hatası olsa da local'i temizle */ }
+    } catch {}
     await clearTokens();
     setUserName('');
     setAuthState(false);

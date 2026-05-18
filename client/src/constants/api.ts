@@ -1,8 +1,7 @@
 import { router } from 'expo-router';
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens, setAuthState } from '../store/auth';
-import { BASE_URL } from './base';
 
-export { BASE_URL };
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:3000/api';
 
 export const API_ENDPOINTS = {
     AUTH: {
