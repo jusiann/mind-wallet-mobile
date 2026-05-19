@@ -81,6 +81,9 @@ const createStyles = (COLORS: any) =>
         goalIconBoxCompleted: {
             backgroundColor: '#43A047',
         },
+        goalIconBoxExpired: {
+            backgroundColor: '#E65100',
+        },
         goalTitle: {
             flex: 1,
             fontFamily: 'HankenGrotesk_600SemiBold',
@@ -91,6 +94,21 @@ const createStyles = (COLORS: any) =>
             fontFamily: 'HankenGrotesk_400Regular',
             fontSize: 12,
             color: COLORS.textSecondary,
+        },
+        deadlineTextExpired: {
+            color: '#E65100',
+        },
+        expiredBadge: {
+            backgroundColor: '#FBE9E7',
+            borderRadius: 10,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            marginLeft: 6,
+        },
+        expiredBadgeText: {
+            color: '#E65100',
+            fontSize: 11,
+            fontFamily: 'HankenGrotesk_500Medium',
         },
         amountRow: {
             flexDirection: 'row',
@@ -119,6 +137,9 @@ const createStyles = (COLORS: any) =>
         pctTextCompleted: {
             color: '#43A047',
         },
+        pctTextExpired: {
+            color: '#E65100',
+        },
         progressTrack: {
             height: 8,
             backgroundColor: COLORS.surfaceContainerHigh,
@@ -132,6 +153,9 @@ const createStyles = (COLORS: any) =>
         },
         progressFillCompleted: {
             backgroundColor: '#43A047',
+        },
+        progressFillExpired: {
+            backgroundColor: '#E65100',
         },
         aiCard: {
             backgroundColor: COLORS.textPrimary,
@@ -240,6 +264,9 @@ const createStyles = (COLORS: any) =>
         detailIconWrapCompleted: {
             backgroundColor: '#43A047',
         },
+        detailIconWrapExpired: {
+            backgroundColor: '#E65100',
+        },
         detailGoalName: {
             fontFamily: 'HankenGrotesk_700Bold',
             fontSize: 20,
@@ -260,6 +287,9 @@ const createStyles = (COLORS: any) =>
         detailStatusBadgeCompleted: {
             backgroundColor: '#E8F5E9',
         },
+        detailStatusBadgeExpired: {
+            backgroundColor: '#FBE9E7',
+        },
         detailStatusText: {
             fontFamily: 'HankenGrotesk_500Medium',
             fontSize: 12,
@@ -267,6 +297,9 @@ const createStyles = (COLORS: any) =>
         },
         detailStatusTextCompleted: {
             color: '#388E3C',
+        },
+        detailStatusTextExpired: {
+            color: '#E65100',
         },
         detailProgressTrack: {
             height: 8,
@@ -282,6 +315,9 @@ const createStyles = (COLORS: any) =>
         },
         detailProgressFillCompleted: {
             backgroundColor: '#43A047',
+        },
+        detailProgressFillExpired: {
+            backgroundColor: '#E65100',
         },
         detailPctText: {
             fontFamily: 'HankenGrotesk_600SemiBold',

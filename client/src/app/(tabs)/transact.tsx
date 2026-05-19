@@ -264,7 +264,7 @@ export default function TransactScreen() {
                         <View style={styles.spacer} />
                     </View>
 
-                    <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
+                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
                         {/* TYPE TOGGLE */}
                         <View style={styles.typeToggle}>
                             <TouchableOpacity

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
     ActivityIndicator,
+    Image,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -50,7 +51,7 @@ export default function RegisterScreen() {
         <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
             {/* LOGO */}
             <View style={styles.logoRow}>
-                <Ionicons name="wallet" size={36} color={COLORS.textPrimary} />
+                <Image source={require('../../../assets/images/mind_wallet_logo_black.png')} style={{ width: 64, height: 64 }} resizeMode="contain" />
                 <Text style={styles.logoText}>Mind Wallet</Text>
             </View>
 

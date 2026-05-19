@@ -127,6 +127,9 @@ const createStyles = (COLORS: any) =>
             fontSize: 17,
             color: COLORS.textPrimary,
         },
+        modalScroll: {
+            flex: 1,
+        },
         modalContent: {
             paddingHorizontal: 20,
             paddingBottom: 24,

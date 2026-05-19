@@ -93,6 +93,7 @@ export default function MindyScreen() {
                 { id: Date.now().toString(), role: 'user', content: text.trim() },
             ]);
             setInput('');
+            setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
         }
 
         setLoading(true);
@@ -145,7 +146,7 @@ export default function MindyScreen() {
                     style={styles.flex}
                     contentContainerStyle={styles.messagesContent}
                     showsVerticalScrollIndicator={false}
-                    onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+                    onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
                     keyboardShouldPersistTaps='handled'
                 >
                     {messages.length === 0 && (

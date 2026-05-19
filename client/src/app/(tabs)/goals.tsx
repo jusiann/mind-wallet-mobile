@@ -25,6 +25,15 @@ function formatCurrency(amount: number) {
     return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function formatAmountInput(raw: string): string {
+    const cleaned = raw.replace(/[^0-9,]/g, '');
+    const commaIdx = cleaned.indexOf(',');
+    const intPart = commaIdx === -1 ? cleaned : cleaned.slice(0, commaIdx);
+    const decPart = commaIdx === -1 ? '' : cleaned.slice(commaIdx + 1).replace(/,/g, '').slice(0, 2);
+    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return commaIdx === -1 ? formatted : `${formatted},${decPart}`;
+}
+
 function formatMonthYear(date: Date): string {
     return date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
 }
@@ -47,6 +56,10 @@ const STATUS_LABELS: Record<Goal['status'], string> = {
     COMPLETED: 'Tamamlandı',
     PAUSED: 'Durduruldu',
 };
+
+function isGoalExpired(goal: Goal): boolean {
+    return goal.status === 'ACTIVE' && new Date(goal.deadline) < new Date();
+}
 
 export default function GoalsScreen() {
     const router = useRouter();
@@ -126,7 +139,7 @@ export default function GoalsScreen() {
 
     async function handleSaveAdd() {
         const trimmedTitle = addTitle.trim();
-        const amount = parseFloat(addTargetAmount.replace(',', '.'));
+        const amount = parseFloat(addTargetAmount.replace(/\./g, '').replace(',', '.'));
         if (!trimmedTitle) { setAddFormError('Hedef adı gerekli.'); return; }
         if (isNaN(amount) || amount <= 0) { setAddFormError('Geçerli bir tutar girin.'); return; }
         setAddSaving(true);
@@ -174,6 +187,7 @@ export default function GoalsScreen() {
 
     const detailPct = detailGoal ? Math.min(Number(detailGoal.progress_pct), 100) : 0;
     const detailIsCompleted = detailGoal?.status === 'COMPLETED';
+    const detailIsExpired = detailGoal ? isGoalExpired(detailGoal) : false;
     const detailRemaining = detailGoal
         ? Math.max(detailGoal.target_amount - detailGoal.current_amount, 0)
         : 0;
@@ -190,15 +204,25 @@ export default function GoalsScreen() {
                         <View style={styles.spacer} />
                     </View>
 
-                    <View style={[styles.detailIconWrap, detailIsCompleted && styles.detailIconWrapCompleted]}>
+                    <View style={[styles.detailIconWrap, detailIsCompleted && styles.detailIconWrapCompleted, detailIsExpired && styles.detailIconWrapExpired]}>
                         <Ionicons name='flag' size={32} color={COLORS.white} />
                     </View>
                     <Text style={styles.detailGoalName}>{detailGoal.title}</Text>
-                    <View style={[styles.detailStatusBadge, detailIsCompleted && styles.detailStatusBadgeCompleted]}>
-                        <Text style={[styles.detailStatusText, detailIsCompleted && styles.detailStatusTextCompleted]}>
-                            {STATUS_LABELS[detailGoal.status]}
-                        </Text>
-                    </View>
+                    {(detailGoal.status !== 'ACTIVE' || detailIsExpired) && (
+                        <View style={[
+                            styles.detailStatusBadge,
+                            detailIsCompleted && styles.detailStatusBadgeCompleted,
+                            detailIsExpired && styles.detailStatusBadgeExpired,
+                        ]}>
+                            <Text style={[
+                                styles.detailStatusText,
+                                detailIsCompleted && styles.detailStatusTextCompleted,
+                                detailIsExpired && styles.detailStatusTextExpired,
+                            ]}>
+                                {detailIsExpired ? 'Süre Doldu' : STATUS_LABELS[detailGoal.status]}
+                            </Text>
+                        </View>
+                    )}
 
                     <View style={styles.detailProgressTrack}>
                         <View
@@ -206,6 +230,7 @@ export default function GoalsScreen() {
                                 styles.detailProgressFill,
                                 { width: `${detailPct}%` as any },
                                 detailIsCompleted && styles.detailProgressFillCompleted,
+                                detailIsExpired && styles.detailProgressFillExpired,
                             ]}
                         />
                     </View>
@@ -280,11 +305,11 @@ export default function GoalsScreen() {
                             <TextInput
                                 style={styles.addAmountInput}
                                 value={addTargetAmount}
-                                onChangeText={setAddTargetAmount}
-                                placeholder='0,00'
+                                onChangeText={(t) => setAddTargetAmount(formatAmountInput(t))}
+                                placeholder='0'
                                 placeholderTextColor={COLORS.border}
                                 keyboardType='decimal-pad'
-                                maxLength={12}
+                                maxLength={14}
                             />
                         </View>
 
@@ -335,12 +360,6 @@ export default function GoalsScreen() {
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-                    {/* INFO */}
-                    <View style={styles.infoSection}>
-                        <Text style={styles.infoTitle}>Hedef Yönetimi</Text>
-                        <Text style={styles.infoSubtitle}>Aktif hedeflerinizi ve AI destekli analizler.</Text>
-                    </View>
-
                     {/* AI CARD */}
                     {aiInsight ? (
                         <View style={styles.aiCard}>
@@ -373,6 +392,7 @@ export default function GoalsScreen() {
                         goals.map((goal) => {
                             const pct = Math.min(Number(goal.progress_pct), 100);
                             const isCompleted = goal.status === 'COMPLETED';
+                            const isExpired = isGoalExpired(goal);
                             const pendingPledge = pendingPledgesByGoal[goal.id] ?? 0;
                             return (
                                 <TouchableOpacity
@@ -382,10 +402,15 @@ export default function GoalsScreen() {
                                     activeOpacity={0.85}
                                 >
                                     <View style={styles.goalTop}>
-                                        <View style={[styles.goalIconBox, isCompleted && styles.goalIconBoxCompleted]}>
+                                        <View style={[styles.goalIconBox, isCompleted && styles.goalIconBoxCompleted, isExpired && styles.goalIconBoxExpired]}>
                                             <Ionicons name='flag' size={15} color={COLORS.white} />
                                         </View>
                                         <Text style={styles.goalTitle} numberOfLines={1}>{goal.title}</Text>
+                                        {isExpired && (
+                                            <View style={styles.expiredBadge}>
+                                                <Text style={styles.expiredBadgeText}>Süre Doldu</Text>
+                                            </View>
+                                        )}
                                         {pendingPledge > 0 && (
                                             <View style={{ backgroundColor: COLORS.primaryContainer, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 6 }}>
                                                 <Text style={{ color: COLORS.primary, fontSize: 11, fontFamily: 'HankenGrotesk_500Medium' }}>
@@ -394,7 +419,7 @@ export default function GoalsScreen() {
                                             </View>
                                         )}
                                     </View>
-                                    <Text style={styles.deadlineText}>
+                                    <Text style={[styles.deadlineText, isExpired && styles.deadlineTextExpired]}>
                                         Son tarih:{' '}
                                         {new Date(goal.deadline).toLocaleDateString('tr-TR', {
                                             day: 'numeric',
@@ -407,7 +432,7 @@ export default function GoalsScreen() {
                                             <Text style={styles.currentAmount}>{formatCurrency(goal.current_amount)}</Text>
                                             <Text style={styles.targetAmount}> / {formatCurrency(goal.target_amount)}</Text>
                                         </View>
-                                        <Text style={[styles.pctText, isCompleted && styles.pctTextCompleted]}>
+                                        <Text style={[styles.pctText, isCompleted && styles.pctTextCompleted, isExpired && styles.pctTextExpired]}>
                                             %{pct.toFixed(0)}
                                         </Text>
                                     </View>
@@ -417,6 +442,7 @@ export default function GoalsScreen() {
                                                 styles.progressFill,
                                                 { width: `${pct}%` as any },
                                                 isCompleted && styles.progressFillCompleted,
+                                                isExpired && styles.progressFillExpired,
                                             ]}
                                         />
                                     </View>
