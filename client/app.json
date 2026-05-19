@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Mind Wallet",
-    "slug": "mind-wallet",
+    "slug": "client",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/mind_wallet_icon_v3.png",
