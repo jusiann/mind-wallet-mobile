@@ -8,6 +8,7 @@ import {
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { clearTokens, getAccessToken, getAuthState, getMe, setAuthState, setUserName, subscribeAuthState } from '../store/auth';
+import { getOnboardingCompleted, loadOnboardingState, subscribeOnboarding } from '../store/onboarding';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,6 +33,7 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
             } catch {
                 await clearTokens();
             }
+            await loadOnboardingState();
             onReady();
             SplashScreen.hideAsync();
         })();
@@ -42,14 +44,21 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
 
 function RootNavigator() {
     const [authenticated, setAuthenticated] = useState(getAuthState());
+    const [onboardingDone, setOnboardingDone] = useState(getOnboardingCompleted());
 
     useEffect(() => subscribeAuthState(setAuthenticated), []);
+    useEffect(() => subscribeOnboarding(setOnboardingDone), []);
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
             {/* PROTECTED ROUTES */}
-            <Stack.Protected guard={authenticated}>
+            <Stack.Protected guard={authenticated && onboardingDone}>
                 <Stack.Screen name="(tabs)" />
+            </Stack.Protected>
+
+            {/* ONBOARDING — authenticated but hasn't completed onboarding */}
+            <Stack.Protected guard={authenticated && !onboardingDone}>
+                <Stack.Screen name="onboarding" />
             </Stack.Protected>
 
             {/* PUBLIC ROUTES */}
