@@ -3,8 +3,15 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://mind-wallet-mobile.onrender.com/api"
       }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://mind-wallet-mobile.onrender.com/api"
+      }
+    }
   }
 }

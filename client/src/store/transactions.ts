@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 import { apiFetch } from '../constants/api';
 import { getAccessToken } from './auth';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.12:3000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://mind-wallet-mobile.onrender.com/api';
 
 export interface Category {
     id: number;
