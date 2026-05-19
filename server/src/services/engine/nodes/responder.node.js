@@ -331,8 +331,8 @@ export const responderNode = async (state) => {
                 ...savingsButtons,
                 {
                     id: "tip_back",
-                    label: "Geri dön",
-                    payload: { action: "back_to_analysis" },
+                    label: "İptal",
+                    payload: { action: "cancel" },
                 },
             ],
         };
