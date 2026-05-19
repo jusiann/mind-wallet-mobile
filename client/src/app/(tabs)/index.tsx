@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { DashboardData, getDashboard } from '../../store/dashboard';
-import { CategorySpend, fetchMonthlyExpensesByCategory, translateCat } from '../../store/transactions';
+import { CategorySpend, fetchMonthlyExpensesByCategory } from '../../store/transactions';
+import { translateCat } from '../../constants/categories';
 import { COLORS } from '../../constants/theme';
 import { getUserInitials } from '../../store/auth';
 import { pendingMessage } from '../../store/engine';

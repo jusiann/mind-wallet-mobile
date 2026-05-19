@@ -1,6 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiFetch } from '../constants/api';
+import { translateCat } from '../constants/categories';
 import { getAccessToken } from './auth';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://mind-wallet-mobile.onrender.com/api';
@@ -29,28 +30,6 @@ export interface CategorySpend {
     amount: number;
 }
 
-const CAT_TR: Record<string, string> = {
-    'Food & Groceries': 'Market',
-    'Eating Out': 'Yemek',
-    Transportation: 'Ulaşım',
-    'Rent & Bills': 'Kira',
-    Entertainment: 'Eğlence',
-    Health: 'Sağlık',
-    Clothing: 'Giyim',
-    Education: 'Eğitim',
-    Subscriptions: 'Abonelik',
-    Other: 'Diğer',
-    Salary: 'Maaş',
-    Freelance: 'Serbest',
-    Investment: 'Yatırım',
-    Gift: 'Hediye',
-    'Rental Income': 'Kira Geliri',
-    Cash: 'Nakit',
-};
-
-export function translateCat(name: string): string {
-    return CAT_TR[name] ?? name;
-}
 
 export async function fetchTransactions(limit = 100, offset = 0): Promise<{ success: boolean; data?: { transactions: Transaction[]; total: number }; message?: string }> {
     try {
@@ -151,7 +130,7 @@ export async function fetchMonthlyExpensesByCategory(): Promise<{
             totals.set(raw, (totals.get(raw) ?? 0) + parseFloat(String(tx.amount)));
         }
         const data: CategorySpend[] = Array.from(totals.entries())
-            .map(([rawName, amount]) => ({ name: CAT_TR[rawName] ?? rawName, rawName, amount }))
+            .map(([rawName, amount]) => ({ name: translateCat(rawName), rawName, amount }))
             .sort((a, b) => b.amount - a.amount);
         return {
             success: true,

@@ -350,7 +350,7 @@ export default function GoalsScreen() {
                             </View>
                             <Text style={styles.aiMessage}>{aiInsight.message}</Text>
                             <TouchableOpacity style={styles.aiBtn} onPress={handleAiAction}>
-                                <Text style={styles.aiBtnText}>Aksiyonu Onayla</Text>
+                                <Text style={styles.aiBtnText}>Mindy'e Sor</Text>
                             </TouchableOpacity>
                         </View>
                     ) : (

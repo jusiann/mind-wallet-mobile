@@ -4,11 +4,11 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const GEMINI_TIMEOUT_MS = 30_000;
 
 export const getModel = () =>
-    genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash' });
+    genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL ?? 'gemini-3-flash-preview' });
 
 const getJsonModel = () =>
     genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL ?? 'gemini-2.0-flash',
+        model: process.env.GEMINI_MODEL ?? 'gemini-3-flash-preview',
         generationConfig: { responseMimeType: 'application/json' },
     });
 
@@ -41,7 +41,9 @@ export const generateJSON = async (prompt, fallback = null) => {
     } catch {
         const match = text.match(/\{[\s\S]*\}/);
         if (match) {
-            try { return JSON.parse(match[0]); } catch { /* fall through */ }
+            try { 
+                return JSON.parse(match[0]); 
+            } catch { }
         }
         return fallback;
     }

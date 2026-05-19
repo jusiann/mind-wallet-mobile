@@ -39,9 +39,9 @@ export default function TabsLayout() {
                 tabBarStyle: { backgroundColor: COLORS.white },
             }}
         >
-            <Tabs.Screen name="index"    options={{ title: 'Mind Wallet', tabBarLabel: label('Dashboard'), tabBarIcon: icon('grid-outline', 'grid') }} />
+            <Tabs.Screen name="index"    options={{ title: 'Mind Wallet', tabBarLabel: label('Ana Sayfa'), tabBarIcon: icon('grid-outline', 'grid') }} />
             <Tabs.Screen name="ai-hub"   options={{ title: 'Mind Wallet', tabBarLabel: label('Mindy'),     tabBarIcon: icon('sparkles-outline', 'sparkles') }} />
-            <Tabs.Screen name="transact" options={{ title: 'Mind Wallet', tabBarLabel: label('Transact'),  tabBarIcon: icon('swap-horizontal-outline', 'swap-horizontal') }} />
+            <Tabs.Screen name="transact" options={{ title: 'Mind Wallet', tabBarLabel: label('İşlemler'),  tabBarIcon: icon('swap-horizontal-outline', 'swap-horizontal') }} />
             <Tabs.Screen name="goals"    options={{ title: 'Mind Wallet', tabBarLabel: label('Hedefler'),  tabBarIcon: icon('flag-outline', 'flag') }} />
             <Tabs.Screen name="profile"  options={{ href: null, headerShown: false }} />
         </Tabs>
