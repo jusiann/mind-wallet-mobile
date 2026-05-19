@@ -221,20 +221,15 @@ export default function TransactScreen() {
         });
         if (res.success) {
             resetAddForm();
-            const askAnother = () => showAlert({
-                title: 'İşlem Kaydedildi',
-                message: 'Başka işlem yapmak ister misin?',
-                onCancel: () => { setAddOpen(false); load(); },
-                confirm: { label: 'Evet', cancelLabel: 'Hayır', onPress: () => {} },
-            });
             if (res.data!.warning) {
                 showAlert({
                     title: 'Uyarı',
                     message: res.data!.warning!,
-                    confirm: { label: 'Tamam', hideCancel: true, onPress: askAnother },
+                    confirm: { label: 'Tamam', hideCancel: true, onPress: () => { setAddOpen(false); load(); } },
                 });
             } else {
-                askAnother();
+                setAddOpen(false);
+                load();
             }
         } else {
             showAlert({ title: 'Hata', message: res.message ?? 'Kaydedilemedi.' });

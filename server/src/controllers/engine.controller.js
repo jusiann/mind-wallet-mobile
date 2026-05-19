@@ -68,7 +68,7 @@ export const analyze = async (req, res) => {
             console.log(`[ENGINE-CHAT - ${time}] User ${userId} saved transaction ${saved.id} via chat`);
             return quickReply(
                 res,
-                `İşlem eklendi! ${tx.amount.toLocaleString('tr-TR')} TL ${toTR(tx.category ?? '')} kaydedildi. Başka bir işlem yapmak ister misin?`,
+                `İşlem eklendi! ${tx.amount.toLocaleString('tr-TR')} TL ${toTR(tx.category ?? '')} kaydedildi.`,
                 [
                     {
                         id: 'end_transaction',
@@ -99,7 +99,7 @@ export const analyze = async (req, res) => {
             console.log(`[ENGINE-CHAT - ${time}] User ${userId} created goal ${saved.id} via chat`);
             return quickReply(
                 res,
-                `${goal.title} hedefi oluşturuldu! Hedef: ${Number(goal.target_amount).toLocaleString('tr-TR')} TL. Başka bir şey yapmak ister misin?`,
+                `${goal.title} hedefi oluşturuldu! Hedef: ${Number(goal.target_amount).toLocaleString('tr-TR')} TL.`,
                 [
                     {
                         id: 'end_analyze',
@@ -140,7 +140,7 @@ export const analyze = async (req, res) => {
             console.log(`[ENGINE-CHAT - ${time}] User ${userId} added ${contribution.amount} TRY to goal ${contribution.goalId}`);
             return quickReply(
                 res,
-                `${Number(contribution.amount).toLocaleString('tr-TR')} TL "${g.title}" hedefine eklendi! Toplam: ${Number(g.current_amount).toLocaleString('tr-TR')} / ${Number(g.target_amount).toLocaleString('tr-TR')} TL. Başka bir şey yapmak ister misin?`,
+                `${Number(contribution.amount).toLocaleString('tr-TR')} TL "${g.title}" hedefine eklendi! Toplam: ${Number(g.current_amount).toLocaleString('tr-TR')} / ${Number(g.target_amount).toLocaleString('tr-TR')} TL.`,
                 [
                     { id: 'end_analyze', label: 'Aylık Özet', payload: { action: 'start_analysis' } },
                     { id: 'end_transaction', label: 'İşlem Ekle', payload: { action: 'start_transaction' } },
@@ -178,7 +178,7 @@ export const analyze = async (req, res) => {
 
             return quickReply(
                 res,
-                `Söz verildi! ${Number(pledge.amount).toLocaleString('tr-TR')} TL'yi "${pledge.goalTitle}" hedefin için ayırdım. Bu ay bu kategoride gerçekten az harcarsan, tutarı otomatik hedefe aktaracağım. Başka bir şey yapmak ister misin?`,
+                `Söz verildi! ${Number(pledge.amount).toLocaleString('tr-TR')} TL'yi "${pledge.goalTitle}" hedefin için ayırdım. Bu ay bu kategoride gerçekten az harcarsan, tutarı otomatik hedefe aktaracağım.`,
                 [
                     { id: 'end_analyze', label: 'Aylık Özet', payload: { action: 'start_analysis' } },
                     { id: 'end_transaction', label: 'İşlem Ekle', payload: { action: 'start_transaction' } },
@@ -206,7 +206,7 @@ export const analyze = async (req, res) => {
             console.log(`[ENGINE-CHAT - ${time}] User ${userId} routed ${route.amount} TRY to goal ${route.goalId}`);
             return quickReply(
                 res,
-                `${Number(route.amount).toLocaleString('tr-TR')} TL, ${g.title} hedefine yönlendirildi. Toplam: ${Number(g.current_amount).toLocaleString('tr-TR')} / ${Number(g.target_amount).toLocaleString('tr-TR')} TL. Başka bir şey yapmak ister misin?`,
+                `${Number(route.amount).toLocaleString('tr-TR')} TL, ${g.title} hedefine yönlendirildi. Toplam: ${Number(g.current_amount).toLocaleString('tr-TR')} / ${Number(g.target_amount).toLocaleString('tr-TR')} TL.`,
                 [
                     {
                         id: 'end_analyze',
