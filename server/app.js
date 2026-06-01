@@ -12,6 +12,7 @@ import goalsRoutes from './src/routes/goals.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
 import engineRoutes from './src/routes/engine.routes.js';
 import pledgeRoutes from './src/routes/pledge.routes.js';
+import cronJob from './src/utils/cron.util.js';
 
 const REQUIRED_ENV = [
     'JWT_SECRET_KEY', 'JWT_REFRESH_SECRET_KEY', 'JWT_RESET_SECRET_KEY',
@@ -104,6 +105,10 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, async () => {
     const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
     console.log(`[SERVER - ${time}] Started on port ${PORT}`);
+    
+    // Start cron jobs
+    cronJob.start();
+    
     await connectDB();
     await initDB();
 });
