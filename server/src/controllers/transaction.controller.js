@@ -1,7 +1,8 @@
 import ApiError from '../utils/error.js';
 import db from '../lib/db/database.js';
-import { runGuardRail } from '../services/engine/graph.js';
+import { runGuardRail } from '../services/engine/guardrail.js';
 import ExcelJS from 'exceljs';
+import { invalidateContext } from '../services/engine/contextCache.js';
 
 const validateAmount = (amount) => {
     const parsed = parseFloat(amount);
@@ -114,6 +115,7 @@ export const createTransaction = async (req, res) => {
 
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[TRANSACTION - ${time}] User ${req.user.id} created transaction ${rows[0].id}`);
+        invalidateContext(req.user.id);
 
         res.status(201).json({
             success: true,
@@ -377,6 +379,7 @@ export const updateTransaction = async (req, res) => {
             params,
         );
 
+        invalidateContext(req.user.id);
         res.status(200).json({
             success: true,
             message: 'Transaction updated successfully.',
@@ -440,6 +443,7 @@ export const deleteTransaction = async (req, res) => {
 
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[TRANSACTION - ${time}] User ${req.user.id} deleted transaction ${parsedId}`);
+        invalidateContext(req.user.id);
 
         res.status(200).json({
             success: true,

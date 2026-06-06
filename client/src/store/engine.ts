@@ -38,7 +38,8 @@ export const pendingMessage = {
 
 export async function analyzeEngine(params: AnalyzeParams): Promise<{ success: boolean; data?: EngineResponse; message?: string }> {
     try {
-        const res = await apiFetch<{ success: boolean; data: EngineResponse }>('/engine/analyze', {
+        const endpoint = params.buttonPayload ? '/engine/action' : '/engine/chat';
+        const res = await apiFetch<{ success: boolean; data: EngineResponse }>(endpoint, {
             method: 'POST',
             body: JSON.stringify(params),
         });

@@ -38,7 +38,8 @@ export const API_ENDPOINTS = {
     },
     DASHBOARD: `${BASE_URL}/dashboard`,
     ENGINE: {
-        ANALYZE: `${BASE_URL}/engine/analyze`,
+        CHAT: `${BASE_URL}/engine/chat`,
+        ACTION: `${BASE_URL}/engine/action`,
     },
     PLEDGES: {
         LIST: `${BASE_URL}/pledges`,

@@ -1,5 +1,6 @@
 import db from '../lib/db/database.js';
 import ApiError from '../utils/error.js';
+import { invalidateContext } from '../services/engine/contextCache.js';
 
 export const listPledges = async (req, res) => {
     try {
@@ -87,6 +88,7 @@ export const resolvePledge = async (req, res) => {
                 `UPDATE savings_pledges SET status = 'RESOLVED', resolved_at = NOW() WHERE id = $1`,
                 [pledgeId],
             );
+            invalidateContext(userId);
 
             const g = goalRows[0];
             res.status(200).json({

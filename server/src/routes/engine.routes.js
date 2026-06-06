@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { analyze } from '../controllers/engine.controller.js';
+import { chat, action } from '../controllers/engine.controller.js';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import { createRateLimiter } from '../utils/rate.limiter.js';
 
@@ -7,6 +7,7 @@ const router = Router();
 
 const engineLimiter = createRateLimiter(100);
 
-router.post('/analyze', authMiddleware, engineLimiter, analyze);
+router.post('/chat', authMiddleware, engineLimiter, chat);
+router.post('/action', authMiddleware, engineLimiter, action);
 
 export default router;

@@ -1,5 +1,6 @@
 import ApiError from '../utils/error.js';
 import db from '../lib/db/database.js';
+import { invalidateContext } from '../services/engine/contextCache.js';
 
 const VALID_STATUSES = ['ACTIVE', 'COMPLETED', 'PAUSED'];
 
@@ -89,6 +90,7 @@ export const createGoal = async (req, res) => {
 
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[GOAL - ${time}] User ${req.user.id} created goal ${rows[0].id}`);
+        invalidateContext(req.user.id);
 
         res.status(201).json({
             success: true,
@@ -256,6 +258,7 @@ export const updateGoal = async (req, res) => {
 
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[GOAL - ${time}] User ${req.user.id} updated goal ${parsedId}`);
+        invalidateContext(req.user.id);
 
         res.status(200).json({
             success: true,
@@ -293,6 +296,7 @@ export const deleteGoal = async (req, res) => {
 
         const time = new Date().toLocaleTimeString('tr-TR', { hour12: false });
         console.log(`[GOAL - ${time}] User ${req.user.id} deleted goal ${parsedId}`);
+        invalidateContext(req.user.id);
 
         res.status(200).json({
             success: true,
