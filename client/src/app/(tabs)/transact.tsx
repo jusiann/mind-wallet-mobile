@@ -28,21 +28,13 @@ import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
 import { CAT_META } from '../../constants/categories';
 import createStyles from '../../assets/styles/transact.styles';
+import { useCurrency } from '../../hooks/useCurrency';
+import BottomSheetModal from '../../components/BottomSheetModal';
+import { cleanAmountInput, formatAmountDisplay } from '../../utils/format';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
-function formatCurrency(amount: string | number) {
-    return `₺${parseFloat(String(amount)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
-}
 
-function formatAmountInput(raw: string): string {
-    const cleaned = raw.replace(/[^0-9,]/g, '');
-    const commaIdx = cleaned.indexOf(',');
-    const intPart = commaIdx === -1 ? cleaned : cleaned.slice(0, commaIdx);
-    const decPart = commaIdx === -1 ? '' : cleaned.slice(commaIdx + 1).replace(/,/g, '').slice(0, 2);
-    const formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-    return commaIdx === -1 ? formatted : `${formatted},${decPart}`;
-}
 
 function formatSectionDate(iso: string) {
     return new Date(iso).toLocaleDateString('tr-TR', {
@@ -89,6 +81,9 @@ export default function TransactScreen() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
+    const [exportOpen, setExportOpen] = useState(false);
+    const [exportDate, setExportDate] = useState(new Date());
+    const { symbol, formatCurrency } = useCurrency();
 
     const [addOpen, setAddOpen] = useState(false);
     const [initialType, setInitialType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
@@ -106,8 +101,8 @@ export default function TransactScreen() {
     const router = useRouter();
     const { openAs } = useLocalSearchParams<{ openAs?: 'EXPENSE' | 'INCOME' }>();
     const { width: screenWidth } = useWindowDimensions();
-    const numCols = 4;
-    const chipWidth = (screenWidth - 40 - (numCols - 1) * 8) / numCols;
+    const numCols = 3;
+    const chipWidth = (screenWidth - 64 - (numCols - 1) * 8) / numCols;
 
     useEffect(() => {
         if (openAs === 'EXPENSE' || openAs === 'INCOME') {
@@ -126,7 +121,7 @@ export default function TransactScreen() {
         navigation.setOptions({
             headerRight: () => (
                 <View style={styles.headerActions}>
-                    <TouchableOpacity style={styles.iconBtn} onPress={handleExport} disabled={exporting}>
+                    <TouchableOpacity style={styles.iconBtn} onPress={() => setExportOpen(true)} disabled={exporting}>
                         {exporting ? (
                             <ActivityIndicator size='small' color={COLORS.primary} />
                         ) : (
@@ -156,11 +151,19 @@ export default function TransactScreen() {
 
     useFocusEffect(useCallback(() => { load(); }, [load]));
 
-    async function handleExport() {
+    function shiftExportMonth(delta: number) {
+        const d = new Date(exportDate);
+        d.setMonth(d.getMonth() + delta);
+        setExportDate(d);
+    }
+
+    async function executeExport(all: boolean = false) {
         if (exporting) return;
         setExporting(true);
-        const res = await exportTransactionsToFile();
+        const monthStr = all ? undefined : `${exportDate.getFullYear()}-${String(exportDate.getMonth() + 1).padStart(2, '0')}`;
+        const res = await exportTransactionsToFile(monthStr);
         if (!res.success) showAlert({ title: 'Hata', message: res.message ?? 'Dışa aktarılamadı.' });
+        else setExportOpen(false);
         setExporting(false);
     }
 
@@ -240,135 +243,121 @@ export default function TransactScreen() {
     const isToday = addTxDate.toDateString() === new Date().toDateString();
 
     const addModal = (
-        <Modal
-            visible={addOpen}
-            animationType='slide'
-            presentationStyle='pageSheet'
-            onRequestClose={closeAdd}
-        >
-            <SafeAreaView style={styles.modalSafe} edges={['top', 'bottom']}>
-                <KeyboardAvoidingView
-                    style={styles.flex}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <BottomSheetModal visible={addOpen} onClose={closeAdd}>
+            <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Yeni İşlem</Text>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
+                {/* TYPE TOGGLE */}
+                <View style={styles.typeToggle}>
+                    <TouchableOpacity
+                        style={[styles.typeBtn, addType === 'EXPENSE' && styles.typeBtnActiveExpense]}
+                        onPress={() => { setAddType('EXPENSE'); setAddSelectedCatId(null); }}
+                    >
+                        <View style={[styles.typeDot, { backgroundColor: addType === 'EXPENSE' ? '#E53935' : COLORS.border }]} />
+                        <Text style={[styles.typeBtnText, addType === 'EXPENSE' && styles.typeBtnTextActive]}>Gider</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.typeBtn, addType === 'INCOME' && styles.typeBtnActiveIncome]}
+                        onPress={() => { setAddType('INCOME'); setAddSelectedCatId(null); }}
+                    >
+                        <View style={[styles.typeDot, { backgroundColor: addType === 'INCOME' ? '#2E7D32' : COLORS.border }]} />
+                        <Text style={[styles.typeBtnText, addType === 'INCOME' && styles.typeBtnTextActiveIncome]}>Gelir</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* AMOUNT */}
+                <View style={styles.amountRow}>
+                    <Text style={styles.amountSymbol}>{symbol}</Text>
+                    <TextInput
+                        style={styles.amountInput}
+                        value={addAmount}
+                        onChangeText={(t) => setAddAmount(cleanAmountInput(t))}
+                        onEndEditing={() => setAddAmount(formatAmountDisplay(addAmount))}
+                        placeholder='0,00'
+                        placeholderTextColor={COLORS.border}
+                        keyboardType='decimal-pad'
+                        returnKeyType='done'
+                        maxLength={12}
+                    />
+                </View>
+
+                {/* CATEGORY */}
+                <Text style={styles.fieldLabel}>Kategori</Text>
+                <View style={styles.catGrid}>
+                    {categories
+                        .filter((c) => c.applicable_to === addType)
+                        .map((cat) => {
+                            const meta = CAT_META[cat.name] ?? { tr: cat.name, icon: 'wallet-outline' as IoniconName };
+                            const selected = addSelectedCatId === cat.id;
+                            return (
+                                <TouchableOpacity
+                                    key={cat.id}
+                                    style={[styles.catChip, selected && styles.catChipSelected, { width: chipWidth }]}
+                                    onPress={() => setAddSelectedCatId(selected ? null : cat.id)}
+                                >
+                                    <Ionicons name={meta.icon} size={20} color={selected ? COLORS.white : COLORS.primary} />
+                                    <Text style={[styles.catChipText, selected && styles.catChipTextSelected]} numberOfLines={1}>
+                                        {meta.tr}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                </View>
+
+                {/* DESCRIPTION */}
+                <Text style={styles.fieldLabel}>Açıklama</Text>
+                <View style={styles.descRow}>
+                    <TextInput
+                        style={styles.descInput}
+                        value={addDescription}
+                        onChangeText={setAddDescription}
+                        placeholder='Açıklama ekle...'
+                        placeholderTextColor={COLORS.placeholderText}
+                        maxLength={200}
+                    />
+                    <Ionicons name='pencil-outline' size={16} color={COLORS.textSecondary} />
+                </View>
+
+                {/* DATE */}
+                <Text style={styles.fieldLabel}>Tarih</Text>
+                <View style={styles.dateRow}>
+                    <TouchableOpacity onPress={() => shiftDay(-1)} style={styles.dateArrow}>
+                        <Ionicons name='chevron-back' size={18} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                    <Text style={styles.dateText}>
+                        {isToday
+                            ? 'Bugün'
+                            : addTxDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
+                    </Text>
+                    <TouchableOpacity onPress={() => shiftDay(1)} style={styles.dateArrow} disabled={isToday}>
+                        <Ionicons
+                            name='chevron-forward'
+                            size={18}
+                            color={isToday ? COLORS.border : COLORS.textPrimary}
+                        />
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+
+            <View style={styles.saveWrap}>
+                <TouchableOpacity
+                    style={[styles.saveBtn, addSaving && styles.saveBtnDisabled]}
+                    onPress={saveAdd}
+                    disabled={addSaving}
                 >
-                    <View style={styles.modalHeader}>
-                        <TouchableOpacity onPress={closeAdd} style={styles.modalCloseBtn}>
-                            <Ionicons name='close' size={22} color={COLORS.textPrimary} />
-                        </TouchableOpacity>
-                        <Text style={styles.modalTitle}>Yeni İşlem</Text>
-                        <View style={styles.spacer} />
-                    </View>
-
-                    <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
-                        {/* TYPE TOGGLE */}
-                        <View style={styles.typeToggle}>
-                            <TouchableOpacity
-                                style={[styles.typeBtn, addType === 'EXPENSE' && styles.typeBtnActiveExpense]}
-                                onPress={() => { setAddType('EXPENSE'); setAddSelectedCatId(null); }}
-                            >
-                                <View style={[styles.typeDot, { backgroundColor: addType === 'EXPENSE' ? '#E53935' : COLORS.border }]} />
-                                <Text style={[styles.typeBtnText, addType === 'EXPENSE' && styles.typeBtnTextActive]}>Gider</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.typeBtn, addType === 'INCOME' && styles.typeBtnActiveIncome]}
-                                onPress={() => { setAddType('INCOME'); setAddSelectedCatId(null); }}
-                            >
-                                <View style={[styles.typeDot, { backgroundColor: addType === 'INCOME' ? '#2E7D32' : COLORS.border }]} />
-                                <Text style={[styles.typeBtnText, addType === 'INCOME' && styles.typeBtnTextActiveIncome]}>Gelir</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* AMOUNT */}
-                        <View style={styles.amountRow}>
-                            <Text style={styles.amountSymbol}>₺</Text>
-                            <TextInput
-                                style={styles.amountInput}
-                                value={addAmount}
-                                onChangeText={(t) => setAddAmount(formatAmountInput(t))}
-                                placeholder='0,00'
-                                placeholderTextColor={COLORS.border}
-                                keyboardType='decimal-pad'
-                                maxLength={12}
-                            />
-                        </View>
-
-                        {/* CATEGORY */}
-                        <Text style={styles.fieldLabel}>Kategori</Text>
-                        <View style={styles.catGrid}>
-                            {categories
-                                .filter((c) => c.applicable_to === addType)
-                                .map((cat) => {
-                                    const meta = CAT_META[cat.name] ?? { tr: cat.name, icon: 'wallet-outline' as IoniconName };
-                                    const selected = addSelectedCatId === cat.id;
-                                    return (
-                                        <TouchableOpacity
-                                            key={cat.id}
-                                            style={[styles.catChip, selected && styles.catChipSelected, { width: chipWidth }]}
-                                            onPress={() => setAddSelectedCatId(selected ? null : cat.id)}
-                                        >
-                                            <Ionicons name={meta.icon} size={20} color={selected ? COLORS.white : COLORS.primary} />
-                                            <Text style={[styles.catChipText, selected && styles.catChipTextSelected]} numberOfLines={1}>
-                                                {meta.tr}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                        </View>
-
-                        {/* DESCRIPTION */}
-                        <Text style={styles.fieldLabel}>Açıklama</Text>
-                        <View style={styles.descRow}>
-                            <TextInput
-                                style={styles.descInput}
-                                value={addDescription}
-                                onChangeText={setAddDescription}
-                                placeholder='Açıklama ekle...'
-                                placeholderTextColor={COLORS.placeholderText}
-                                maxLength={200}
-                            />
-                            <Ionicons name='pencil-outline' size={16} color={COLORS.textSecondary} />
-                        </View>
-
-                        {/* DATE */}
-                        <Text style={styles.fieldLabel}>Tarih</Text>
-                        <View style={styles.dateRow}>
-                            <TouchableOpacity onPress={() => shiftDay(-1)} style={styles.dateArrow}>
-                                <Ionicons name='chevron-back' size={18} color={COLORS.textPrimary} />
-                            </TouchableOpacity>
-                            <Text style={styles.dateText}>
-                                {isToday
-                                    ? 'Bugün'
-                                    : addTxDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
-                            </Text>
-                            <TouchableOpacity onPress={() => shiftDay(1)} style={styles.dateArrow} disabled={isToday}>
-                                <Ionicons
-                                    name='chevron-forward'
-                                    size={18}
-                                    color={isToday ? COLORS.border : COLORS.textPrimary}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                    </ScrollView>
-
-                    <View style={styles.saveWrap}>
-                        <TouchableOpacity
-                            style={[styles.saveBtn, addSaving && styles.saveBtnDisabled]}
-                            onPress={saveAdd}
-                            disabled={addSaving}
-                        >
-                            {addSaving ? (
-                                <ActivityIndicator size='small' color={COLORS.white} />
-                            ) : (
-                                <>
-                                    <Ionicons name='checkmark-circle-outline' size={20} color={COLORS.white} />
-                                    <Text style={styles.saveBtnText}>İşlemi Kaydet</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        </Modal>
+                    {addSaving ? (
+                        <ActivityIndicator size='small' color={COLORS.white} />
+                    ) : (
+                        <>
+                            <Ionicons name='checkmark-circle-outline' size={20} color={COLORS.white} />
+                            <Text style={styles.saveBtnText}>İşlemi Kaydet</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            </View>
+        </BottomSheetModal>
     );
 
     const detailIsIncome = detailTx?.type === 'INCOME';
@@ -378,7 +367,7 @@ export default function TransactScreen() {
             <View style={styles.detailOverlay}>
                 <View style={styles.detailCard}>
                     <View style={styles.detailHeader}>
-                        <TouchableOpacity onPress={() => setDetailTx(null)} style={styles.modalCloseBtn}>
+                        <TouchableOpacity onPress={() => setDetailTx(null)} style={styles.detailCloseBtn}>
                             <Ionicons name='close' size={22} color={COLORS.textPrimary} />
                         </TouchableOpacity>
                         <Text style={styles.modalTitle}>İşlem Detayı</Text>
@@ -390,7 +379,7 @@ export default function TransactScreen() {
                     </View>
 
                     <Text style={[styles.detailAmount, detailIsIncome ? styles.amountIncome : styles.amountExpense]}>
-                        {detailIsIncome ? '+' : '-'}{formatCurrency(detailTx.amount)}
+                        {detailIsIncome ? '+' : '-'}{formatCurrency(parseFloat(String(detailTx.amount)))}
                     </Text>
                     <Text style={styles.detailType}>
                         {detailIsIncome ? 'Gelir' : 'Gider'} · {detailTx.catMeta.tr}
@@ -424,6 +413,51 @@ export default function TransactScreen() {
         </Modal>
     );
 
+    const exportBottomSheet = (
+        <BottomSheetModal visible={exportOpen} onClose={() => setExportOpen(false)}>
+            <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Dışa Aktar - Excel</Text>
+            </View>
+            <View style={{ padding: 20, gap: 16 }}>
+                <Text style={styles.fieldLabel}>Dışa aktarılacak dönemi seçin:</Text>
+
+                <View style={[styles.dateRow, { marginBottom: 8 }]}>
+                    <TouchableOpacity onPress={() => shiftExportMonth(-1)} style={styles.dateArrow}>
+                        <Ionicons name='chevron-back' size={18} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                    <Text style={styles.dateText}>
+                        {exportDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' })}
+                    </Text>
+                    <TouchableOpacity onPress={() => shiftExportMonth(1)} style={styles.dateArrow}>
+                        <Ionicons name='chevron-forward' size={18} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                    style={styles.saveBtn}
+                    onPress={() => executeExport(false)}
+                    disabled={exporting}
+                >
+                    {exporting ? <ActivityIndicator size="small" color={COLORS.white} /> : (
+                        <>
+                            <Ionicons name='download-outline' size={20} color={COLORS.white} />
+                            <Text style={styles.saveBtnText}>Seçili Ayı Aktar</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.surfaceContainerLow, marginTop: 4 }]}
+                    onPress={() => executeExport(true)}
+                    disabled={exporting}
+                >
+                    <Ionicons name='documents-outline' size={20} color={COLORS.primary} />
+                    <Text style={[styles.saveBtnText, { color: COLORS.primary }]}>Tüm İşlemleri Aktar</Text>
+                </TouchableOpacity>
+            </View>
+        </BottomSheetModal>
+    );
+
     return (
         <SafeAreaView style={styles.safe} edges={[]}>
             {loading ? (
@@ -431,11 +465,33 @@ export default function TransactScreen() {
                     <ActivityIndicator size='large' color={COLORS.primary} />
                 </View>
             ) : sections.length === 0 ? (
-                <View style={styles.center}>
-                    <Ionicons name='receipt-outline' size={48} color={COLORS.border} />
-                    <Text style={styles.emptyText}>Henüz işlem yok.</Text>
-                    <Text style={styles.emptySubText}>+ butonuna basarak işlem ekleyebilirsin.</Text>
-                </View>
+                <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                    <View style={styles.quickActionsRow}>
+                        <TouchableOpacity
+                            style={styles.quickActionCard}
+                            onPress={() => router.push('/report' as any)}
+                        >
+                            <View style={styles.quickActionIconCircle}>
+                                <Ionicons name='bar-chart-outline' size={22} color={COLORS.white} />
+                            </View>
+                            <Text style={styles.quickActionLabel}>Aylık Rapor</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.quickActionCard}
+                            onPress={() => router.push('/recurring' as any)}
+                        >
+                            <View style={styles.quickActionIconCircle}>
+                                <Ionicons name='repeat-outline' size={22} color={COLORS.white} />
+                            </View>
+                            <Text style={styles.quickActionLabel}>Otom. İşlemler</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={[styles.center, { flex: 1 }]}>
+                        <Ionicons name='receipt-outline' size={48} color={COLORS.border} />
+                        <Text style={styles.emptyText}>Henüz işlem yok.</Text>
+                        <Text style={styles.emptySubText}>+ butonuna basarak işlem ekleyebilirsin.</Text>
+                    </View>
+                </ScrollView>
             ) : (
                 <SectionList
                     sections={sections}
@@ -443,6 +499,28 @@ export default function TransactScreen() {
                     contentContainerStyle={styles.listContent}
                     showsVerticalScrollIndicator={false}
                     stickySectionHeadersEnabled={false}
+                    ListHeaderComponent={
+                        <View style={styles.quickActionsRow}>
+                            <TouchableOpacity
+                                style={styles.quickActionCard}
+                                onPress={() => router.push('/report' as any)}
+                            >
+                                <View style={styles.quickActionIconCircle}>
+                                    <Ionicons name='bar-chart-outline' size={22} color={COLORS.white} />
+                                </View>
+                                <Text style={styles.quickActionLabel}>Aylık Rapor</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.quickActionCard}
+                                onPress={() => router.push('/recurring' as any)}
+                            >
+                                <View style={styles.quickActionIconCircle}>
+                                    <Ionicons name='repeat-outline' size={22} color={COLORS.white} />
+                                </View>
+                                <Text style={styles.quickActionLabel}>Otom. İşlemler</Text>
+                            </TouchableOpacity>
+                        </View>
+                    }
                     renderSectionHeader={({ section }) => (
                         <Text style={styles.sectionHeader}>{section.title}</Text>
                     )}
@@ -456,7 +534,7 @@ export default function TransactScreen() {
                                 <Ionicons
                                     name={item.catMeta.icon}
                                     size={18}
-                                    color={item.type === 'INCOME' ? '#2E7D32' : COLORS.primary}
+                                    color={COLORS.primary}
                                 />
                             </View>
                             <View style={styles.txInfo}>
@@ -473,7 +551,7 @@ export default function TransactScreen() {
                                     item.type === 'INCOME' ? styles.amountIncome : styles.amountExpense,
                                 ]}
                             >
-                                {item.type === 'INCOME' ? '+' : '-'}{formatCurrency(item.amount)}
+                                {item.type === 'INCOME' ? '+' : '-'}{formatCurrency(parseFloat(String(item.amount)))}
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -481,6 +559,7 @@ export default function TransactScreen() {
             )}
 
             {addModal}
+            {exportBottomSheet}
             {detailModal}
             {alertEl}
         </SafeAreaView>

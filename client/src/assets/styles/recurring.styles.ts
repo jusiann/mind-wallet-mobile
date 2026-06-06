@@ -6,41 +6,23 @@ const createStyles = (COLORS: any) =>
             flex: 1,
             backgroundColor: COLORS.background,
         },
-        flex: {
-            flex: 1,
-        },
-        center: {
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-        },
-        emptyText: {
-            fontFamily: 'HankenGrotesk_400Regular',
-            fontSize: 16,
-            lineHeight: 24,
-            letterSpacing: 0,
-            color: COLORS.textSecondary,
-            marginTop: 8,
-        },
-        emptySubText: {
-            fontFamily: 'HankenGrotesk_400Regular',
-            fontSize: 14,
-            color: COLORS.placeholderText,
-        },
-        headerActions: {
+        header: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 8,
-            marginRight: 16,
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
         },
-        iconBtn: {
+        backBtn: {
             width: 40,
             height: 40,
-            borderRadius: 20,
-            backgroundColor: COLORS.surfaceContainerLow,
             alignItems: 'center',
             justifyContent: 'center',
+        },
+        headerTitle: {
+            fontFamily: 'HankenGrotesk_600SemiBold',
+            fontSize: 18,
+            color: COLORS.textPrimary,
         },
         addBtn: {
             width: 40,
@@ -50,88 +32,127 @@ const createStyles = (COLORS: any) =>
             alignItems: 'center',
             justifyContent: 'center',
         },
-        listContent: {
-            paddingHorizontal: 20,
-            paddingBottom: 24,
-        },
-        quickActionsRow: {
-            flexDirection: 'row',
-            gap: 12,
-            marginTop: 16,
-        },
-        quickActionCard: {
+        center: {
             flex: 1,
-            backgroundColor: '#111111',
-            borderRadius: 20,
-            padding: 16,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-        },
-        quickActionIconCircle: {
-            width: 36,
-            height: 36,
-            borderRadius: 18,
             alignItems: 'center',
             justifyContent: 'center',
+            gap: 8,
         },
-        quickActionLabel: {
-            fontFamily: 'HankenGrotesk_600SemiBold',
-            fontSize: 14,
-            color: COLORS.white,
+        scroll: {
+            padding: 20,
+            paddingBottom: 40,
         },
-        sectionHeader: {
-            fontFamily: 'HankenGrotesk_600SemiBold',
-            fontSize: 14,
-            color: COLORS.textSecondary,
-            marginTop: 20,
-            marginBottom: 8,
-            letterSpacing: 0.3,
-        },
-        txRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
+        emptyCard: {
             backgroundColor: COLORS.white,
-            borderRadius: 16,
-            padding: 14,
-            marginBottom: 8,
-            gap: 12,
-        },
-        txIcon: {
-            width: 36,
-            height: 36,
+            borderRadius: 24,
+            padding: 32,
             alignItems: 'center',
             justifyContent: 'center',
-            flexShrink: 0,
+            gap: 12,
+            marginTop: 20,
         },
-        txIconIncome: {},
-        txInfo: {
-            flex: 1,
-        },
-        txDesc: {
-            fontFamily: 'HankenGrotesk_500Medium',
-            fontSize: 15,
+        emptyTitle: {
+            fontFamily: 'HankenGrotesk_600SemiBold',
+            fontSize: 18,
             color: COLORS.textPrimary,
         },
-        txMeta: {
+        emptyHint: {
+            fontFamily: 'HankenGrotesk_400Regular',
+            fontSize: 14,
+            color: COLORS.textSecondary,
+            textAlign: 'center',
+            lineHeight: 20,
+        },
+        recCard: {
+            backgroundColor: COLORS.white,
+            borderRadius: 24,
+            padding: 16,
+            marginBottom: 12,
+        },
+        recCardInactive: {
+            opacity: 0.6,
+        },
+        recCardContent: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+        },
+        recInfo: {
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+        },
+        recIconBox: {
+            width: 44,
+            height: 44,
+            borderRadius: 22,
+            backgroundColor: COLORS.surfaceContainerLow,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        recIconExpense: {
+            backgroundColor: COLORS.primary,
+        },
+        recIconIncome: {
+            backgroundColor: COLORS.primary,
+        },
+        recDesc: {
+            fontFamily: 'HankenGrotesk_600SemiBold',
+            fontSize: 16,
+            color: COLORS.textPrimary,
+            marginBottom: 2,
+        },
+        recCat: {
             fontFamily: 'HankenGrotesk_400Regular',
             fontSize: 13,
             color: COLORS.textSecondary,
-            marginTop: 2,
         },
-        txAmount: {
-            fontFamily: 'HankenGrotesk_600SemiBold',
-            fontSize: 15,
+        recAmount: {
+            fontFamily: 'HankenGrotesk_700Bold',
+            fontSize: 16,
         },
-        amountExpense: {
+        recAmountExpense: {
             color: '#E53935',
         },
-        amountIncome: {
+        recAmountIncome: {
             color: '#2E7D32',
         },
+        recTextWrap: {
+            flex: 1,
+            paddingRight: 8,
+        },
+        recRight: {
+            alignItems: 'flex-end',
+            gap: 4,
+        },
+        recRightBottom: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+        },
+        recDetailItem: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+        },
+        recDetailTextDate: {
+            fontFamily: 'HankenGrotesk_500Medium',
+            fontSize: 12,
+            color: COLORS.textSecondary,
+        },
+        recSwitch: {
+            transform: [{ scaleX: 0.65 }, { scaleY: 0.65 }],
+            marginRight: -6,
+            marginLeft: -4,
+        },
+        // Modal Styles
         modalSafe: {
             flex: 1,
             backgroundColor: COLORS.background,
+        },
+        flex: {
+            flex: 1,
         },
         modalHeader: {
             alignItems: 'center',
@@ -144,6 +165,9 @@ const createStyles = (COLORS: any) =>
             fontFamily: 'HankenGrotesk_600SemiBold',
             fontSize: 17,
             color: COLORS.textPrimary,
+        },
+        spacer: {
+            width: 36,
         },
         modalScroll: {
             flex: 1,
@@ -275,6 +299,29 @@ const createStyles = (COLORS: any) =>
             color: COLORS.textPrimary,
             textAlign: 'center',
         },
+        intervalRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            gap: 8,
+        },
+        intervalBtn: {
+            flex: 1,
+            backgroundColor: COLORS.surfaceContainerLow,
+            borderRadius: 12,
+            paddingVertical: 10,
+            alignItems: 'center',
+        },
+        intervalBtnSelected: {
+            backgroundColor: COLORS.primary,
+        },
+        intervalBtnText: {
+            fontFamily: 'HankenGrotesk_500Medium',
+            fontSize: 13,
+            color: COLORS.textPrimary,
+        },
+        intervalBtnTextSelected: {
+            color: COLORS.white,
+        },
         saveWrap: {
             paddingHorizontal: 20,
             paddingTop: 12,
@@ -296,9 +343,6 @@ const createStyles = (COLORS: any) =>
             fontFamily: 'HankenGrotesk_600SemiBold',
             fontSize: 16,
             color: COLORS.white,
-        },
-        spacer: {
-            width: 36,
         },
         detailOverlay: {
             flex: 1,
@@ -337,12 +381,6 @@ const createStyles = (COLORS: any) =>
             alignItems: 'center',
             justifyContent: 'center',
             marginVertical: 8,
-        },
-        detailIconExpense: {
-            backgroundColor: COLORS.primary,
-        },
-        detailIconIncome: {
-            backgroundColor: COLORS.primary,
         },
         detailAmount: {
             fontFamily: 'HankenGrotesk_700Bold',

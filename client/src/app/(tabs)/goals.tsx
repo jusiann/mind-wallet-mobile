@@ -20,13 +20,20 @@ import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
 import { pendingMessage } from '../../store/engine';
 import createStyles from '../../assets/styles/goals.styles';
+import { useCurrency } from '../../hooks/useCurrency';
+import BottomSheetModal from '../../components/BottomSheetModal';
 
-function formatCurrency(amount: number) {
-    return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function cleanAmountInput(raw: string): string {
+    const cleaned = raw.replace(/[^0-9,]/g, '');
+    const commaIdx = cleaned.indexOf(',');
+    const intPart = commaIdx === -1 ? cleaned : cleaned.slice(0, commaIdx);
+    const decPart = commaIdx === -1 ? '' : cleaned.slice(commaIdx + 1).replace(/,/g, '').slice(0, 2);
+    return commaIdx === -1 ? intPart : `${intPart},${decPart}`;
 }
 
-function formatAmountInput(raw: string): string {
+function formatAmountDisplay(raw: string): string {
     const cleaned = raw.replace(/[^0-9,]/g, '');
+    if (!cleaned) return '';
     const commaIdx = cleaned.indexOf(',');
     const intPart = commaIdx === -1 ? cleaned : cleaned.slice(0, commaIdx);
     const decPart = commaIdx === -1 ? '' : cleaned.slice(commaIdx + 1).replace(/,/g, '').slice(0, 2);
@@ -66,6 +73,7 @@ export default function GoalsScreen() {
     const navigation = useNavigation();
     const styles = createStyles(COLORS);
     const { showAlert, alertEl } = useAlert();
+    const { symbol, formatCurrency } = useCurrency();
 
     const [goals, setGoals] = useState<Goal[]>([]);
     const [loading, setLoading] = useState(true);
@@ -269,83 +277,69 @@ export default function GoalsScreen() {
     );
 
     const addModal = (
-        <Modal
-            visible={addOpen}
-            animationType='slide'
-            presentationStyle='pageSheet'
-            onRequestClose={closeAdd}
-        >
-            <SafeAreaView style={styles.addSafe} edges={['top', 'bottom']}>
-                <KeyboardAvoidingView
-                    style={styles.addFlex}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <BottomSheetModal visible={addOpen} onClose={closeAdd}>
+            <View style={styles.addHeader}>
+                <Text style={styles.addHeaderTitle}>Yeni Hedef</Text>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.addContent} keyboardShouldPersistTaps='handled'>
+                <Text style={styles.addFieldLabel}>Hedef Adı</Text>
+                <TextInput
+                    style={styles.addTextInput}
+                    value={addTitle}
+                    onChangeText={setAddTitle}
+                    placeholder='Örn: Ev Peşinatı'
+                    placeholderTextColor={COLORS.placeholderText}
+                    maxLength={100}
+                />
+
+                <Text style={styles.addFieldLabel}>Hedef Tutarı</Text>
+                <View style={styles.addAmountRow}>
+                    <Text style={styles.addAmountSymbol}>{symbol}</Text>
+                    <TextInput
+                        style={styles.addAmountInput}
+                        value={addTargetAmount}
+                        onChangeText={(t) => setAddTargetAmount(cleanAmountInput(t))}
+                        onEndEditing={() => setAddTargetAmount(formatAmountDisplay(addTargetAmount))}
+                        placeholder='0'
+                        placeholderTextColor={COLORS.border}
+                        keyboardType='decimal-pad'
+                        returnKeyType='done'
+                        maxLength={14}
+                    />
+                </View>
+
+                <Text style={styles.addFieldLabel}>Hedef Tarihi</Text>
+                <View style={styles.addDateRow}>
+                    <TouchableOpacity style={styles.addDateArrow} onPress={() => setAddDeadline((d) => addMonths(d, -1))}>
+                        <Ionicons name='chevron-back' size={18} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                    <Text style={styles.addDateText}>{formatMonthYear(addDeadline)}</Text>
+                    <TouchableOpacity style={styles.addDateArrow} onPress={() => setAddDeadline((d) => addMonths(d, 1))}>
+                        <Ionicons name='chevron-forward' size={18} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                </View>
+
+                {addFormError ? <Text style={styles.addFormError}>{addFormError}</Text> : null}
+            </ScrollView>
+
+            <View style={styles.addSaveWrap}>
+                <TouchableOpacity
+                    style={[styles.addSaveBtn, addSaving && styles.addSaveBtnDisabled]}
+                    onPress={handleSaveAdd}
+                    disabled={addSaving}
                 >
-                    <View style={styles.addHeader}>
-                        <TouchableOpacity onPress={closeAdd} style={styles.addCloseBtn}>
-                            <Ionicons name='close' size={22} color={COLORS.textPrimary} />
-                        </TouchableOpacity>
-                        <Text style={styles.addHeaderTitle}>Yeni Hedef</Text>
-                        <View style={styles.spacer} />
-                    </View>
-
-                    <ScrollView contentContainerStyle={styles.addContent} keyboardShouldPersistTaps='handled'>
-                        <Text style={styles.addFieldLabel}>Hedef Adı</Text>
-                        <TextInput
-                            style={styles.addTextInput}
-                            value={addTitle}
-                            onChangeText={setAddTitle}
-                            placeholder='Örn: Ev Peşinatı'
-                            placeholderTextColor={COLORS.placeholderText}
-                            maxLength={100}
-                        />
-
-                        <Text style={styles.addFieldLabel}>Hedef Tutarı</Text>
-                        <View style={styles.addAmountRow}>
-                            <Text style={styles.addAmountSymbol}>₺</Text>
-                            <TextInput
-                                style={styles.addAmountInput}
-                                value={addTargetAmount}
-                                onChangeText={(t) => setAddTargetAmount(formatAmountInput(t))}
-                                placeholder='0'
-                                placeholderTextColor={COLORS.border}
-                                keyboardType='decimal-pad'
-                                maxLength={14}
-                            />
-                        </View>
-
-                        <Text style={styles.addFieldLabel}>Hedef Tarihi</Text>
-                        <View style={styles.addDateRow}>
-                            <TouchableOpacity style={styles.addDateArrow} onPress={() => setAddDeadline((d) => addMonths(d, -1))}>
-                                <Ionicons name='chevron-back' size={18} color={COLORS.textPrimary} />
-                            </TouchableOpacity>
-                            <Text style={styles.addDateText}>{formatMonthYear(addDeadline)}</Text>
-                            <TouchableOpacity style={styles.addDateArrow} onPress={() => setAddDeadline((d) => addMonths(d, 1))}>
-                                <Ionicons name='chevron-forward' size={18} color={COLORS.textPrimary} />
-                            </TouchableOpacity>
-                        </View>
-
-                        {addFormError ? <Text style={styles.addFormError}>{addFormError}</Text> : null}
-                    </ScrollView>
-
-                    <View style={styles.addSaveWrap}>
-                        <TouchableOpacity
-                            style={[styles.addSaveBtn, addSaving && styles.addSaveBtnDisabled]}
-                            onPress={handleSaveAdd}
-                            disabled={addSaving}
-                        >
-                            {addSaving ? (
-                                <ActivityIndicator color={COLORS.white} />
-                            ) : (
-                                <>
-                                    <Ionicons name='checkmark-circle-outline' size={20} color={COLORS.white} />
-                                    <Text style={styles.addSaveBtnText}>Hedefi Kaydet</Text>
-                                </>
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        </Modal>
+                    {addSaving ? (
+                        <ActivityIndicator color={COLORS.white} />
+                    ) : (
+                        <>
+                            <Ionicons name='checkmark-circle-outline' size={20} color={COLORS.white} />
+                            <Text style={styles.addSaveBtnText}>Hedefi Kaydet</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            </View>
+        </BottomSheetModal>
     );
 
     return (
@@ -414,7 +408,7 @@ export default function GoalsScreen() {
                                         {pendingPledge > 0 && (
                                             <View style={{ backgroundColor: COLORS.primaryContainer, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 6 }}>
                                                 <Text style={{ color: COLORS.primary, fontSize: 11, fontFamily: 'HankenGrotesk_500Medium' }}>
-                                                    +{Number(pendingPledge).toLocaleString('tr-TR')} TL söz
+                                                    +{formatCurrency(Number(pendingPledge))} söz
                                                 </Text>
                                             </View>
                                         )}

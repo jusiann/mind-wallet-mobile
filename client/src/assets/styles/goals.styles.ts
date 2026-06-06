@@ -365,19 +365,11 @@ const createStyles = (COLORS: any) =>
             flex: 1,
         },
         addHeader: {
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 20,
-            paddingVertical: 14,
-        },
-        addCloseBtn: {
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: COLORS.surfaceContainerLow,
             alignItems: 'center',
             justifyContent: 'center',
+            paddingHorizontal: 20,
+            paddingVertical: 14,
+            paddingTop: 0,
         },
         addHeaderTitle: {
             fontFamily: 'HankenGrotesk_600SemiBold',

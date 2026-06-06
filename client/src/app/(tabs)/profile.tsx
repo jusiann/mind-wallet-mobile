@@ -12,17 +12,22 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { changePassword, deleteAccount, getMe, logout, updateProfile } from '../../store/auth';
+import { changePassword, deleteAccount, getMe, logout, updateProfile, changePin } from '../../store/auth';
 import createStyles from '../../assets/styles/profile.styles';
 import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
+import { CURRENCIES, CurrencyCode } from '../../constants/currency';
+import { useCurrency } from '../../hooks/useCurrency';
+import { Modal } from 'react-native';
 
 export default function ProfileScreen() {
     const router = useRouter();
     const styles = createStyles(COLORS);
     const { showAlert, alertEl } = useAlert();
+    const { currency: currentCurrency } = useCurrency();
 
     const [user, setUser] = useState<{ name: string; email: string } | null>(null);
+    const [showCurrencyModal, setShowCurrencyModal] = useState(false);
 
     const [name, setName] = useState('');
     const [profileLoading, setProfileLoading] = useState(false);
@@ -39,6 +44,15 @@ export default function ProfileScreen() {
 
     const [logoutLoading, setLogoutLoading] = useState(false);
 
+    const [currentPin, setCurrentPin] = useState('');
+    const [newPin, setNewPin] = useState('');
+    const [confirmPin, setConfirmPin] = useState('');
+    const [showCurrentPin, setShowCurrentPin] = useState(false);
+    const [showNewPin, setShowNewPin] = useState(false);
+    const [showConfirmPin, setShowConfirmPin] = useState(false);
+    const [pinLoading, setPinLoading] = useState(false);
+    const [pinMsg, setPinMsg] = useState('');
+
     const [showDeleteSection, setShowDeleteSection] = useState(false);
     const [deletePassword, setDeletePassword] = useState('');
     const [showDeletePwd, setShowDeletePwd] = useState(false);
@@ -49,7 +63,7 @@ export default function ProfileScreen() {
         getMe().then(res => {
             setUser(res);
             setName(res.name);
-        }).catch(() => {});
+        }).catch(() => { });
     }, []);
 
     async function handleUpdateProfile() {
@@ -61,6 +75,21 @@ export default function ProfileScreen() {
             setUser(prev => prev ? { ...prev, name: res.name } : null);
             setName(res.name);
             setProfileMsg('success:Profil güncellendi');
+        } catch (e: any) {
+            setProfileMsg('error:' + e.message);
+        } finally {
+            setProfileLoading(false);
+        }
+    }
+
+    async function handleCurrencySelect(code: CurrencyCode) {
+        setShowCurrencyModal(false);
+        if (code === currentCurrency) return;
+        setProfileLoading(true);
+        setProfileMsg('');
+        try {
+            await updateProfile({ currency: code });
+            setProfileMsg('success:Para birimi güncellendi');
         } catch (e: any) {
             setProfileMsg('error:' + e.message);
         } finally {
@@ -89,6 +118,34 @@ export default function ProfileScreen() {
             setPwdMsg('error:' + e.message);
         } finally {
             setPwdLoading(false);
+        }
+    }
+
+    async function handleChangePin() {
+        if (!currentPin || !newPin || !confirmPin) {
+            setPinMsg('error:Tüm alanları doldurun.');
+            return;
+        }
+        if (newPin !== confirmPin) {
+            setPinMsg('error:Yeni PIN kodları eşleşmiyor.');
+            return;
+        }
+        if (newPin.length !== 6 || currentPin.length !== 6) {
+            setPinMsg('error:PIN 6 haneli olmalıdır.');
+            return;
+        }
+        setPinLoading(true);
+        setPinMsg('');
+        try {
+            await changePin(currentPin, newPin);
+            setCurrentPin('');
+            setNewPin('');
+            setConfirmPin('');
+            setPinMsg('success:PIN değiştirildi');
+        } catch (e: any) {
+            setPinMsg('error:' + e.message);
+        } finally {
+            setPinLoading(false);
         }
     }
 
@@ -134,6 +191,12 @@ export default function ProfileScreen() {
         { label: 'Mevcut Şifre', placeholder: '••••••••', value: currentPwd, set: setCurrentPwd, show: showCurrent, toggle: () => setShowCurrent(p => !p) },
         { label: 'Yeni Şifre', placeholder: '', value: newPwd, set: setNewPwd, show: showNew, toggle: () => setShowNew(p => !p) },
         { label: 'Yeni Şifre (Tekrar)', placeholder: '', value: confirmPwd, set: setConfirmPwd, show: showConfirm, toggle: () => setShowConfirm(p => !p) },
+    ];
+
+    const pinFields = [
+        { label: 'Mevcut PIN', placeholder: '••••••', value: currentPin, set: setCurrentPin, show: showCurrentPin, toggle: () => setShowCurrentPin(p => !p) },
+        { label: 'Yeni PIN', placeholder: '', value: newPin, set: setNewPin, show: showNewPin, toggle: () => setShowNewPin(p => !p) },
+        { label: 'Yeni PIN (Tekrar)', placeholder: '', value: confirmPin, set: setConfirmPin, show: showConfirmPin, toggle: () => setShowConfirmPin(p => !p) },
     ];
 
     return (
@@ -182,6 +245,17 @@ export default function ProfileScreen() {
                                 value={user?.email ?? ''}
                                 editable={false}
                             />
+                        </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Para Birimi</Text>
+                            <TouchableOpacity
+                                style={[styles.input, { justifyContent: 'center' }]}
+                                onPress={() => setShowCurrencyModal(true)}
+                            >
+                                <Text style={{ color: COLORS.textPrimary, fontFamily: 'HankenGrotesk_400Regular', fontSize: 15 }}>
+                                    {CURRENCIES[currentCurrency]?.flag} {CURRENCIES[currentCurrency]?.label} ({CURRENCIES[currentCurrency]?.symbol})
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                         {profileMsg ? (
                             <Text style={[styles.msg, profileMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
@@ -238,6 +312,50 @@ export default function ProfileScreen() {
                             {pwdLoading
                                 ? <ActivityIndicator color={COLORS.white} />
                                 : <Text style={styles.btnText}>Şifreyi Güncelle</Text>
+                            }
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* CHANGE PIN */}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>PIN Değiştir</Text>
+                        {pinFields.map(({ label, placeholder, value, set, show, toggle }) => (
+                            <View key={label} style={styles.inputGroup}>
+                                <Text style={styles.label}>{label}</Text>
+                                <View style={styles.inputRow}>
+                                    <TextInput
+                                        style={[styles.input, styles.inputInRow]}
+                                        value={value}
+                                        onChangeText={set}
+                                        secureTextEntry={!show}
+                                        placeholder={placeholder}
+                                        placeholderTextColor={COLORS.placeholderText}
+                                        keyboardType="numeric"
+                                        maxLength={6}
+                                    />
+                                    <TouchableOpacity onPress={toggle} style={styles.eyeBtn}>
+                                        <Ionicons
+                                            name={show ? 'eye-off-outline' : 'eye-outline'}
+                                            size={18}
+                                            color={COLORS.textSecondary}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ))}
+                        {pinMsg ? (
+                            <Text style={[styles.msg, pinMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
+                                {pinMsg.replace(/^(success|error):/, '')}
+                            </Text>
+                        ) : null}
+                        <TouchableOpacity
+                            style={[styles.btn, pinLoading && styles.btnDisabled]}
+                            onPress={handleChangePin}
+                            disabled={pinLoading}
+                        >
+                            {pinLoading
+                                ? <ActivityIndicator color={COLORS.white} />
+                                : <Text style={styles.btnText}>PIN'i Güncelle</Text>
                             }
                         </TouchableOpacity>
                     </View>
@@ -308,6 +426,29 @@ export default function ProfileScreen() {
                 </ScrollView>
             </KeyboardAvoidingView>
             {alertEl}
+
+            <Modal visible={showCurrencyModal} transparent animationType="slide" onRequestClose={() => setShowCurrencyModal(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Para Birimi Seçin</Text>
+                            <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
+                                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+                        {(Object.entries(CURRENCIES) as [CurrencyCode, typeof CURRENCIES[CurrencyCode]][]).map(([code, config]) => (
+                            <TouchableOpacity 
+                                key={code} 
+                                style={[styles.currencyOption, currentCurrency === code && styles.currencyOptionSelected]}
+                                onPress={() => handleCurrencySelect(code)}
+                            >
+                                <Text style={styles.currencyOptionText}>{config.flag} {config.label}</Text>
+                                <Text style={styles.currencyOptionSymbol}>{config.symbol}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

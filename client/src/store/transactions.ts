@@ -144,13 +144,18 @@ export async function fetchMonthlyExpensesByCategory(): Promise<{
     }
 }
 
-export async function exportTransactionsToFile(): Promise<{ success: boolean; message?: string }> {
+export async function exportTransactionsToFile(month?: string): Promise<{ success: boolean; message?: string }> {
     try {
         const token = await getAccessToken();
-        const fileUri = `${FileSystem.documentDirectory}mind-wallet-transactions.xlsx`;
+        const fileUri = `${FileSystem.documentDirectory}mind-wallet-transactions${month ? `-${month}` : ''}.xlsx`;
+        
+        let url = `${BASE_URL}/transactions/export`;
+        if (month) {
+            url += `?month=${encodeURIComponent(month)}`;
+        }
 
         const res = await FileSystem.downloadAsync(
-            `${BASE_URL}/transactions/export`,
+            url,
             fileUri,
             { headers: token ? { Authorization: `Bearer ${token}` } : {} },
         );

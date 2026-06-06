@@ -54,12 +54,13 @@ export const signUp = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const { rows } = await db.query(
-            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, total_balance, monthly_income, token_version',
+            'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, total_balance, monthly_income, token_version, pin_hash',
             [fullname.trim(), email.toLowerCase(), hashedPassword],
         );
 
         const user = rows[0];
         const { accessToken, refreshToken } = generateTokens(user);
+        const hasPin = user.pin_hash != null;
 
         res.status(201).json({
             success: true,
@@ -69,7 +70,8 @@ export const signUp = async (req, res) => {
             user: {
                 id: user.id,
                 name: user.name,
-                email: user.email
+                email: user.email,
+                has_pin: hasPin
             },
         });
     } catch (error) {
@@ -92,7 +94,7 @@ export const signIn = async (req, res) => {
             throw ApiError.badRequest(emailError);
 
         const { rows } = await db.query(
-            'SELECT id, name, email, password, token_version FROM users WHERE email = $1 LIMIT 1',
+            'SELECT id, name, email, password, token_version, pin_hash FROM users WHERE email = $1 LIMIT 1',
             [email.toLowerCase()],
         );
         const existingUser = rows[0];
@@ -114,7 +116,8 @@ export const signIn = async (req, res) => {
             user: {
                 id: existingUser.id,
                 name: existingUser.name,
-                email: existingUser.email
+                email: existingUser.email,
+                has_pin: existingUser.pin_hash != null
             },
         });
     } catch (error) {
@@ -293,7 +296,7 @@ export const refreshToken = async (req, res) => {
         const decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET_KEY, { algorithms: ['HS256'] });
 
         const { rows } = await db.query(
-            'SELECT id, name, email, token_version FROM users WHERE id = $1 LIMIT 1',
+            'SELECT id, name, email, token_version, pin_hash FROM users WHERE id = $1 LIMIT 1',
             [decoded.userId],
         );
         const user = rows[0];
@@ -313,7 +316,8 @@ export const refreshToken = async (req, res) => {
             user: {
                 id: user.id,
                 name: user.name,
-                email: user.email
+                email: user.email,
+                has_pin: user.pin_hash != null
             },
         });
     } catch (error) {
@@ -339,14 +343,34 @@ export const refreshToken = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
     try {
-        const { name } = req.body;
-        if (!name || name.trim().length < 2 || name.trim().length > 50)
-            throw ApiError.badRequest('Name must be between 2 and 50 characters.');
+        const { name, currency } = req.body;
+        const validCurrencies = ['TRY', 'USD', 'EUR', 'GBP'];
+        
+        let updateQuery = 'UPDATE users SET';
+        const params = [];
+        let paramIndex = 1;
 
-        const { rows } = await db.query(
-            'UPDATE users SET name = $1 WHERE id = $2 RETURNING id, name, email',
-            [name.trim(), req.user.id],
-        );
+        if (name) {
+            if (name.trim().length < 2 || name.trim().length > 50)
+                throw ApiError.badRequest('Name must be between 2 and 50 characters.');
+            updateQuery += ` name = $${paramIndex++},`;
+            params.push(name.trim());
+        }
+
+        if (currency) {
+            if (!validCurrencies.includes(currency))
+                throw ApiError.badRequest('Invalid currency.');
+            updateQuery += ` currency = $${paramIndex++},`;
+            params.push(currency);
+        }
+
+        if (params.length === 0) throw ApiError.badRequest('No data provided to update.');
+
+        updateQuery = updateQuery.slice(0, -1); // remove trailing comma
+        updateQuery += ` WHERE id = $${paramIndex} RETURNING id, name, email, currency`;
+        params.push(req.user.id);
+
+        const { rows } = await db.query(updateQuery, params);
         res.status(200).json({ success: true, user: rows[0] });
     } catch (error) {
         const statusCode = error.statusCode || 500;
@@ -383,15 +407,25 @@ export const changePassword = async (req, res) => {
 export const getMe = async (req, res) => {
     try {
         const { rows } = await db.query(
-            `SELECT u.id, u.name, u.email, u.created_at,
+            `SELECT u.id, u.name, u.email, u.created_at, u.pin_hash, u.currency,
                     COALESCE((SELECT SUM(CASE WHEN type = 'INCOME' THEN amount ELSE -amount END)
                               FROM transactions WHERE user_id = u.id), 0) AS total_balance
              FROM users u WHERE u.id = $1 LIMIT 1`,
             [req.user.id],
         );
-        const user = rows[0];
-        if (!user)
+        const userRow = rows[0];
+        if (!userRow)
             throw ApiError.notFound('User not found.');
+
+        const user = {
+            id: userRow.id,
+            name: userRow.name,
+            email: userRow.email,
+            created_at: userRow.created_at,
+            total_balance: userRow.total_balance,
+            has_pin: userRow.pin_hash != null,
+            currency: userRow.currency
+        };
 
         res.status(200).json({
             success: true,
@@ -455,5 +489,107 @@ export const deleteAccount = async (req, res) => {
             success: false,
             error: error.message || 'Account deletion failed'
         });
+    }
+};
+
+export const setPin = async (req, res) => {
+    try {
+        const { pin } = req.body;
+        if (!pin || pin.length !== 6 || !/^\d+$/.test(pin)) {
+            throw ApiError.badRequest('PIN must be exactly 6 digits.');
+        }
+
+        const hashedPin = await bcrypt.hash(pin, 10);
+        await db.query('UPDATE users SET pin_hash = $1 WHERE id = $2', [hashedPin, req.user.id]);
+
+        res.status(200).json({ success: true, message: 'PIN set successfully.' });
+    } catch (error) {
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({ success: false, error: error.message || 'Failed to set PIN.' });
+    }
+};
+
+export const verifyPin = async (req, res) => {
+    try {
+        const { refresh_token, pin } = req.body;
+        if (!refresh_token || !pin) {
+            throw ApiError.badRequest('Refresh token and PIN are required.');
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(refresh_token, process.env.JWT_REFRESH_SECRET_KEY, { algorithms: ['HS256'] });
+        } catch (err) {
+            throw ApiError.unauthorized('Invalid or expired refresh token.');
+        }
+
+        const { rows } = await db.query(
+            'SELECT id, name, email, token_version, pin_hash FROM users WHERE id = $1 LIMIT 1',
+            [decoded.userId]
+        );
+        const user = rows[0];
+
+        if (!user || decoded.tokenVersion !== user.token_version) {
+            throw ApiError.unauthorized('Refresh token has been invalidated.');
+        }
+        if (!user.pin_hash) {
+            throw ApiError.badRequest('No PIN set for this account.');
+        }
+
+        const isPinValid = await bcrypt.compare(pin, user.pin_hash);
+        if (!isPinValid) {
+            throw ApiError.unauthorized('Hatalı PIN.');
+        }
+
+        const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
+
+        res.status(200).json({
+            success: true,
+            access_token: accessToken,
+            refresh_token: newRefreshToken,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                has_pin: true
+            }
+        });
+    } catch (error) {
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({ success: false, error: error.message || 'Failed to verify PIN.' });
+    }
+};
+
+export const changePin = async (req, res) => {
+    try {
+        const { current_pin, new_pin } = req.body;
+        if (!current_pin || !new_pin || new_pin.length !== 6 || !/^\d+$/.test(new_pin)) {
+            throw ApiError.badRequest('Current PIN and a valid 6-digit new PIN are required.');
+        }
+
+        const { rows } = await db.query('SELECT pin_hash FROM users WHERE id = $1 LIMIT 1', [req.user.id]);
+        const user = rows[0];
+
+        if (!user || !user.pin_hash) {
+            throw ApiError.badRequest('No PIN is currently set for this account.');
+        }
+
+        const isValid = await bcrypt.compare(current_pin, user.pin_hash);
+        if (!isValid) {
+            throw ApiError.unauthorized('Current PIN is incorrect.');
+        }
+
+        const isSame = await bcrypt.compare(new_pin, user.pin_hash);
+        if (isSame) {
+            throw ApiError.badRequest('New PIN must be different from the current PIN.');
+        }
+
+        const hashedPin = await bcrypt.hash(new_pin, 10);
+        await db.query('UPDATE users SET pin_hash = $1 WHERE id = $2', [hashedPin, req.user.id]);
+
+        res.status(200).json({ success: true, message: 'PIN changed successfully.' });
+    } catch (error) {
+        const statusCode = error.statusCode || 500;
+        res.status(statusCode).json({ success: false, error: error.message || 'Failed to change PIN.' });
     }
 };

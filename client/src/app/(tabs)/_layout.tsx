@@ -44,6 +44,8 @@ export default function TabsLayout() {
             <Tabs.Screen name="transact" options={{ title: 'Mind Wallet', tabBarLabel: label('İşlemler'),  tabBarIcon: icon('swap-horizontal-outline', 'swap-horizontal') }} />
             <Tabs.Screen name="goals"    options={{ title: 'Mind Wallet', tabBarLabel: label('Hedefler'),  tabBarIcon: icon('flag-outline', 'flag') }} />
             <Tabs.Screen name="profile"  options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="report"   options={{ href: null, headerShown: false }} />
+            <Tabs.Screen name="recurring" options={{ href: null, headerShown: false }} />
         </Tabs>
     );
 }

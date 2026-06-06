@@ -16,6 +16,9 @@ export const API_ENDPOINTS = {
         FORGOT_PASSWORD: `${BASE_URL}/auth/forgot-password`,
         CHECK_RESET_CODE: `${BASE_URL}/auth/check-reset-code`,
         RESET_PASSWORD: `${BASE_URL}/auth/reset-password`,
+        SET_PIN: `${BASE_URL}/auth/set-pin`,
+        VERIFY_PIN: `${BASE_URL}/auth/verify-pin`,
+        CHANGE_PIN: `${BASE_URL}/auth/change-pin`,
     },
     TRANSACTIONS: {
         LIST: `${BASE_URL}/transactions`,

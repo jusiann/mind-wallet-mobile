@@ -12,6 +12,8 @@ import goalsRoutes from './src/routes/goals.routes.js';
 import dashboardRoutes from './src/routes/dashboard.routes.js';
 import engineRoutes from './src/routes/engine.routes.js';
 import pledgeRoutes from './src/routes/pledge.routes.js';
+import reportRoutes from './src/routes/report.routes.js';
+import recurringRoutes from './src/routes/recurring.routes.js';
 import cronJob from './src/utils/cron.util.js';
 
 const REQUIRED_ENV = [
@@ -87,6 +89,8 @@ app.use('/api/goals', goalsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/engine', engineRoutes);
 app.use('/api/pledges', pledgeRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/recurring', recurringRoutes);
 
 app.use((req, res) => {
     res.status(404).json({ success: false, error: 'Route not found' });

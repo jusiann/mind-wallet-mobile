@@ -18,6 +18,7 @@ import { COLORS } from '../../constants/theme';
 import { getUserInitials } from '../../store/auth';
 import { pendingMessage } from '../../store/engine';
 import createStyles, { SCREEN_WIDTH, CHART_COLORS, CHART_SIZE, OUTER_R, INNER_R } from '../../assets/styles/dashboard.styles';
+import { useCurrency } from '../../hooks/useCurrency';
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
     const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -42,15 +43,7 @@ function donutSlicePath(startAngle: number, endAngle: number): string {
     ].join(' ');
 }
 
-function formatCurrency(amount: number): string {
-    return `₺${amount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
 
-function formatCurrencyShort(amount: number): string {
-    if (amount >= 1_000_000) return `₺${(amount / 1_000_000).toFixed(1)}M`;
-    if (amount >= 1_000)     return `₺${(amount / 1_000).toFixed(1)}B`;
-    return `₺${amount.toFixed(0)}`;
-}
 
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
@@ -60,6 +53,7 @@ export default function DashboardScreen() {
     const router     = useRouter();
     const navigation = useNavigation();
     const styles = createStyles(COLORS);
+    const { formatCurrency, formatCurrencyShort } = useCurrency();
 
     const [data, setData]               = useState<DashboardData | null>(null);
     const [loading, setLoading]         = useState(true);

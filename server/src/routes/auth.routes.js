@@ -11,6 +11,9 @@ import {
     changePassword,
     logout,
     deleteAccount,
+    setPin,
+    verifyPin,
+    changePin
 } from '../controllers/auth.controller.js';
 import authMiddleware from '../middlewares/auth.middleware.js';
 import { createRateLimiter } from '../utils/rate.limiter.js';
@@ -34,5 +37,9 @@ router.patch('/me', authMiddleware, updateProfile);
 router.patch('/change-password', authMiddleware, changePassword);
 router.post('/logout', authMiddleware, logout);
 router.delete('/delete-account', authMiddleware, deleteAccount);
+
+router.post('/set-pin', authMiddleware, setPin);
+router.post('/verify-pin', authLimiter, verifyPin);
+router.post('/change-pin', authMiddleware, changePin);
 
 export default router;

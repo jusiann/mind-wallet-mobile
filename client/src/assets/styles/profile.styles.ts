@@ -193,6 +193,53 @@ const createStyles = (COLORS: any) =>
         kbdAvoid: {
             flex: 1,
         },
+        modalOverlay: {
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            justifyContent: 'flex-end',
+        },
+        modalContent: {
+            backgroundColor: COLORS.background,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            padding: 24,
+            paddingBottom: 40,
+        },
+        modalHeader: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 20,
+        },
+        modalTitle: {
+            fontFamily: 'HankenGrotesk_600SemiBold',
+            fontSize: 18,
+            color: COLORS.textPrimary,
+        },
+        currencyOption: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.inputBackground,
+        },
+        currencyOptionSelected: {
+            backgroundColor: COLORS.inputBackground,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            borderBottomWidth: 0,
+        },
+        currencyOptionText: {
+            fontFamily: 'HankenGrotesk_500Medium',
+            fontSize: 16,
+            color: COLORS.textPrimary,
+        },
+        currencyOptionSymbol: {
+            fontFamily: 'HankenGrotesk_600SemiBold',
+            fontSize: 16,
+            color: COLORS.textSecondary,
+        },
     });
 
 export default createStyles;

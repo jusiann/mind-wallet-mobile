@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS users (
     reset_code_expires TIMESTAMP,
     total_balance NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     monthly_income NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    pin_hash VARCHAR(255),
+    currency VARCHAR(3) DEFAULT 'TRY'
 );
 
 CREATE TABLE IF NOT EXISTS categories (
@@ -17,8 +19,6 @@ CREATE TABLE IF NOT EXISTS categories (
     is_essential BOOLEAN DEFAULT TRUE,
     applicable_to VARCHAR(10) NOT NULL DEFAULT 'EXPENSE'
 );
-
-ALTER TABLE categories ADD COLUMN IF NOT EXISTS applicable_to VARCHAR(10) NOT NULL DEFAULT 'EXPENSE';
 
 CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
@@ -54,6 +54,20 @@ CREATE TABLE IF NOT EXISTS savings_pledges (
     status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'RESOLVED', 'CANCELED', 'EXPIRED')),
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     resolved_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS recurring_transactions (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    category_id INT REFERENCES categories(id) ON DELETE SET NULL,
+    amount NUMERIC(10, 2) NOT NULL,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('EXPENSE', 'INCOME')),
+    description TEXT,
+    interval VARCHAR(20) NOT NULL CHECK (interval IN ('DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY')),
+    start_date DATE NOT NULL,
+    next_run_date DATE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_transactions_user_id ON transactions(user_id);

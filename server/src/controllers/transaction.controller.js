@@ -236,9 +236,9 @@ export const getTransaction = async (req, res) => {
 export const exportTransactions = async (req, res) => {
     try {
         const userId = req.user.id;
+        const { month } = req.query;
 
-        const { rows } = await db.query(
-            `SELECT
+        let queryStr = `SELECT
                 t.id,
                 t.amount,
                 t.type,
@@ -247,11 +247,18 @@ export const exportTransactions = async (req, res) => {
                 c.name AS category_name
              FROM transactions t
              LEFT JOIN categories c ON t.category_id = c.id
-             WHERE t.user_id = $1
-             ORDER BY t.transaction_timestamp DESC
-             LIMIT 10000`,
-            [userId],
-        );
+             WHERE t.user_id = $1`;
+        
+        const params = [userId];
+
+        if (month && /^\d{4}-\d{2}$/.test(month)) {
+            queryStr += ` AND TO_CHAR(t.transaction_timestamp, 'YYYY-MM') = $2`;
+            params.push(month);
+        }
+
+        queryStr += ` ORDER BY t.transaction_timestamp DESC LIMIT 10000`;
+
+        const { rows } = await db.query(queryStr, params);
 
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Mind Wallet';
@@ -287,8 +294,10 @@ export const exportTransactions = async (req, res) => {
 
         sheet.getColumn('amount').numFmt = '#,##0.00';
 
+        const filename = month ? `mind-wallet-${userId}-${month}.xlsx` : `mind-wallet-${userId}.xlsx`;
+
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', `attachment; filename="mind-wallet-${userId}.xlsx"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         await workbook.xlsx.write(res);
         res.end();
     } catch (error) {

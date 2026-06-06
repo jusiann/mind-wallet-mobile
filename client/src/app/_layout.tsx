@@ -7,8 +7,9 @@ import {
 } from '@expo-google-fonts/hanken-grotesk';
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { clearTokens, getAccessToken, getAuthState, getMe, setAuthState, setUserName, subscribeAuthState } from '../store/auth';
+import { clearTokens, getAccessToken, getAuthState, getMe, setAuthState, setUserName, subscribeAuthState, tryRefreshToken } from '../store/auth';
 import { getOnboardingCompleted, loadOnboardingState, subscribeOnboarding } from '../store/onboarding';
+import { COLORS } from '../constants/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,11 +25,19 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
         if (!loaded && !error) return;
         (async () => {
             try {
-                const token = await getAccessToken();
-                if (token) {
-                    const res = await getMe();
-                    setUserName(res.name);
-                    setAuthState(true);
+                const refreshState = await tryRefreshToken();
+                if (!refreshState.authenticated) {
+                    await clearTokens();
+                } else {
+                    // authenticated but if we need pin verification, it's already set in state
+                    if (!refreshState.needsPin && !refreshState.needsPinSetup) {
+                        const token = await getAccessToken();
+                        if (token) {
+                            const res = await getMe();
+                            setUserName(res.name);
+                            setAuthState(true, false, !res.has_pin);
+                        }
+                    }
                 }
             } catch {
                 await clearTokens();
@@ -43,22 +52,34 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
 }
 
 function RootNavigator() {
-    const [authenticated, setAuthenticated] = useState(getAuthState());
+    const [{ authenticated, needsPin, needsPinSetup }, setAuthState] = useState(getAuthState());
     const [onboardingDone, setOnboardingDone] = useState(getOnboardingCompleted());
 
-    useEffect(() => subscribeAuthState(setAuthenticated), []);
+    useEffect(() => subscribeAuthState(setAuthState), []);
     useEffect(() => subscribeOnboarding(setOnboardingDone), []);
+
+    const isFullyAuthed = authenticated && !needsPin && !needsPinSetup;
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
             {/* PROTECTED ROUTES */}
-            <Stack.Protected guard={authenticated && onboardingDone}>
+            <Stack.Protected guard={isFullyAuthed && onboardingDone}>
                 <Stack.Screen name="(tabs)" />
             </Stack.Protected>
 
-            {/* ONBOARDING — authenticated but hasn't completed onboarding */}
-            <Stack.Protected guard={authenticated && !onboardingDone}>
+            {/* ONBOARDING */}
+            <Stack.Protected guard={isFullyAuthed && !onboardingDone}>
                 <Stack.Screen name="onboarding" />
+            </Stack.Protected>
+
+            {/* PIN VERIFICATION */}
+            <Stack.Protected guard={authenticated && needsPin}>
+                <Stack.Screen name="pin-entry" options={{ headerShown: false }} />
+            </Stack.Protected>
+
+            {/* PIN SETUP */}
+            <Stack.Protected guard={authenticated && needsPinSetup}>
+                <Stack.Screen name="pin-setup" options={{ headerShown: false }} />
             </Stack.Protected>
 
             {/* PUBLIC ROUTES */}
