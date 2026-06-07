@@ -1,21 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import createStyles from '../../assets/styles/auth.styles';
-import { useAlert } from '../../constants/alert';
-import { COLORS } from '../../constants/theme';
+import { View } from 'react-native';
 import { resetPassword } from '../../store/auth';
+import { useAlert } from '../../constants/alert';
+import AuthScreenWrapper from '../../components/auth/AuthScreenWrapper';
+import AuthHeader from '../../components/auth/AuthHeader';
+import AuthPasswordInput from '../../components/auth/AuthPasswordInput';
+import AuthError from '../../components/auth/AuthError';
+import AuthSubmitButton from '../../components/auth/AuthSubmitButton';
+import AuthFooter from '../../components/auth/AuthFooter';
+import createStyles from '../../assets/styles/auth.styles';
+import { COLORS } from '../../constants/theme';
 
 export default function ResetPasswordScreen() {
     const router = useRouter();
@@ -23,8 +18,6 @@ export default function ResetPasswordScreen() {
 
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [showNewPassword, setShowNewPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const styles = createStyles(COLORS);
@@ -56,120 +49,40 @@ export default function ResetPasswordScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ flex: 1 }}
-            >
-                <ScrollView
-                    contentContainerStyle={styles.scroll}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    {/* HEADER */}
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Yeni Şifre</Text>
-                        <Text style={styles.subtitle}>Yeni şifrenizi belirleyin.</Text>
-                    </View>
+        <AuthScreenWrapper>
+            <AuthHeader title="Yeni Şifre" subtitle="Yeni şifrenizi belirleyin." />
 
-                    {/* FORM CARD */}
-                    <View style={styles.card}>
-                        {/* NEW PASSWORD */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Yeni Şifre</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons
-                                    name="lock-closed-outline"
-                                    size={20}
-                                    color={COLORS.placeholderText}
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    value={newPassword}
-                                    onChangeText={setNewPassword}
-                                    secureTextEntry={!showNewPassword}
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    underlineColorAndroid="transparent"
-                                />
-                                <TouchableOpacity
-                                    style={styles.eyeButton}
-                                    onPress={() => setShowNewPassword(!showNewPassword)}
-                                >
-                                    <Ionicons
-                                        name={showNewPassword ? 'eye-outline' : 'eye-off-outline'}
-                                        size={20}
-                                        color={COLORS.placeholderText}
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+            <View style={styles.card}>
+                <AuthPasswordInput
+                    label="Yeni Şifre"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                />
 
-                        {/* CONFIRM PASSWORD */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>Şifreyi Onayla</Text>
-                            <View style={styles.inputContainer}>
-                                <Ionicons
-                                    name="lock-closed-outline"
-                                    size={20}
-                                    color={COLORS.placeholderText}
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.input}
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                    secureTextEntry={!showConfirmPassword}
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    underlineColorAndroid="transparent"
-                                />
-                                <TouchableOpacity
-                                    style={styles.eyeButton}
-                                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                                >
-                                    <Ionicons
-                                        name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
-                                        size={20}
-                                        color={COLORS.placeholderText}
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+                <AuthPasswordInput
+                    label="Şifreyi Onayla"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                />
 
-                        {/* ERROR */}
-                        {error ? (
-                            <View style={styles.errorBox}>
-                                <Text style={styles.errorText}>{error}</Text>
-                            </View>
-                        ) : null}
+                <AuthError error={error} />
 
-                        {/* SUBMIT */}
-                        <TouchableOpacity
-                            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                            onPress={handleReset}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator size="small" color={COLORS.white} />
-                            ) : (
-                                <>
-                                    <Text style={styles.submitButtonText}>Şifreyi Sıfırla</Text>
-                                    <Ionicons name="checkmark-outline" size={18} color={COLORS.white} />
-                                </>
-                            )}
-                        </TouchableOpacity>
-                    </View>
+                <AuthSubmitButton 
+                    title="Şifreyi Sıfırla" 
+                    icon="checkmark-outline"
+                    onPress={handleReset} 
+                    loading={loading} 
+                />
+            </View>
 
-                    {/* FOOTER */}
-                    <TouchableOpacity style={styles.footer} onPress={() => router.back()}>
-                        <Ionicons name="arrow-back-outline" size={16} color={COLORS.textSecondary} />
-                        <Text style={styles.footerText}>Geri Dön</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </KeyboardAvoidingView>
+            <AuthFooter 
+                text="Geri Dön" 
+                linkText="" 
+                onPress={() => router.back()} 
+                isBack
+            />
+
             {alertEl}
-        </SafeAreaView>
+        </AuthScreenWrapper>
     );
 }

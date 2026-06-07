@@ -19,6 +19,8 @@ import { useAlert } from '../../constants/alert';
 import { CURRENCIES, CurrencyCode } from '../../constants/currency';
 import { useCurrency } from '../../hooks/useCurrency';
 import { Modal } from 'react-native';
+import ProfileInputGroup from '../../components/tabs/profile/ProfileInputGroup';
+import ProfilePasswordInput from '../../components/tabs/profile/ProfilePasswordInput';
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -227,25 +229,18 @@ export default function ProfileScreen() {
                     {/* PROFILE INFO */}
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Profil Bilgileri</Text>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Ad Soyad</Text>
-                            <TextInput
-                                style={styles.input}
-                                value={name}
-                                onChangeText={setName}
-                                placeholder='Ad Soyad'
-                                placeholderTextColor={COLORS.placeholderText}
-                                autoCapitalize='words'
-                            />
-                        </View>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>E-posta</Text>
-                            <TextInput
-                                style={[styles.input, styles.inputDisabled]}
-                                value={user?.email ?? ''}
-                                editable={false}
-                            />
-                        </View>
+                        <ProfileInputGroup
+                            label="Ad Soyad"
+                            value={name}
+                            onChangeText={setName}
+                            placeholder="Ad Soyad"
+                            autoCapitalize="words"
+                        />
+                        <ProfileInputGroup
+                            label="E-posta"
+                            value={user?.email ?? ''}
+                            editable={false}
+                        />
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Para Birimi</Text>
                             <TouchableOpacity
@@ -253,7 +248,7 @@ export default function ProfileScreen() {
                                 onPress={() => setShowCurrencyModal(true)}
                             >
                                 <Text style={{ color: COLORS.textPrimary, fontFamily: 'HankenGrotesk_400Regular', fontSize: 15 }}>
-                                    {CURRENCIES[currentCurrency]?.flag} {CURRENCIES[currentCurrency]?.label} ({CURRENCIES[currentCurrency]?.symbol})
+                                    {CURRENCIES[currentCurrency]?.label} ({CURRENCIES[currentCurrency]?.symbol})
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -278,26 +273,15 @@ export default function ProfileScreen() {
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Şifre Değiştir</Text>
                         {pwdFields.map(({ label, placeholder, value, set, show, toggle }) => (
-                            <View key={label} style={styles.inputGroup}>
-                                <Text style={styles.label}>{label}</Text>
-                                <View style={styles.inputRow}>
-                                    <TextInput
-                                        style={[styles.input, styles.inputInRow]}
-                                        value={value}
-                                        onChangeText={set}
-                                        secureTextEntry={!show}
-                                        placeholder={placeholder}
-                                        placeholderTextColor={COLORS.placeholderText}
-                                    />
-                                    <TouchableOpacity onPress={toggle} style={styles.eyeBtn}>
-                                        <Ionicons
-                                            name={show ? 'eye-off-outline' : 'eye-outline'}
-                                            size={18}
-                                            color={COLORS.textSecondary}
-                                        />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
+                            <ProfilePasswordInput
+                                key={label}
+                                label={label}
+                                placeholder={placeholder}
+                                value={value}
+                                onChangeText={set}
+                                show={show}
+                                onToggleShow={toggle}
+                            />
                         ))}
                         {pwdMsg ? (
                             <Text style={[styles.msg, pwdMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
@@ -320,28 +304,17 @@ export default function ProfileScreen() {
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>PIN Değiştir</Text>
                         {pinFields.map(({ label, placeholder, value, set, show, toggle }) => (
-                            <View key={label} style={styles.inputGroup}>
-                                <Text style={styles.label}>{label}</Text>
-                                <View style={styles.inputRow}>
-                                    <TextInput
-                                        style={[styles.input, styles.inputInRow]}
-                                        value={value}
-                                        onChangeText={set}
-                                        secureTextEntry={!show}
-                                        placeholder={placeholder}
-                                        placeholderTextColor={COLORS.placeholderText}
-                                        keyboardType="numeric"
-                                        maxLength={6}
-                                    />
-                                    <TouchableOpacity onPress={toggle} style={styles.eyeBtn}>
-                                        <Ionicons
-                                            name={show ? 'eye-off-outline' : 'eye-outline'}
-                                            size={18}
-                                            color={COLORS.textSecondary}
-                                        />
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
+                            <ProfilePasswordInput
+                                key={label}
+                                label={label}
+                                placeholder={placeholder}
+                                value={value}
+                                onChangeText={set}
+                                show={show}
+                                onToggleShow={toggle}
+                                keyboardType="numeric"
+                                maxLength={6}
+                            />
                         ))}
                         {pinMsg ? (
                             <Text style={[styles.msg, pinMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
@@ -392,24 +365,14 @@ export default function ProfileScreen() {
                             <Text style={styles.deleteSectionHint}>
                                 Hesabınızı silmek için şifrenizi girin. Bu işlem geri alınamaz.
                             </Text>
-                            <View style={styles.inputRow}>
-                                <TextInput
-                                    style={[styles.input, styles.inputInRow]}
-                                    value={deletePassword}
-                                    onChangeText={setDeletePassword}
-                                    placeholder='Şifreniz'
-                                    placeholderTextColor={COLORS.placeholderText}
-                                    secureTextEntry={!showDeletePwd}
-                                    autoCapitalize='none'
-                                />
-                                <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowDeletePwd(p => !p)}>
-                                    <Ionicons
-                                        name={showDeletePwd ? 'eye-off-outline' : 'eye-outline'}
-                                        size={18}
-                                        color={COLORS.textSecondary}
-                                    />
-                                </TouchableOpacity>
-                            </View>
+                            <ProfilePasswordInput
+                                label="Şifreniz"
+                                value={deletePassword}
+                                onChangeText={setDeletePassword}
+                                placeholder="Şifreniz"
+                                show={showDeletePwd}
+                                onToggleShow={() => setShowDeletePwd(p => !p)}
+                            />
                             {deleteError ? <Text style={[styles.msg, styles.msgError]}>{deleteError}</Text> : null}
                             <TouchableOpacity
                                 style={[styles.deleteConfirmBtn, deleteLoading && styles.btnDisabled]}
@@ -442,7 +405,7 @@ export default function ProfileScreen() {
                                 style={[styles.currencyOption, currentCurrency === code && styles.currencyOptionSelected]}
                                 onPress={() => handleCurrencySelect(code)}
                             >
-                                <Text style={styles.currencyOptionText}>{config.flag} {config.label}</Text>
+                                <Text style={styles.currencyOptionText}>{config.label}</Text>
                                 <Text style={styles.currencyOptionSymbol}>{config.symbol}</Text>
                             </TouchableOpacity>
                         ))}

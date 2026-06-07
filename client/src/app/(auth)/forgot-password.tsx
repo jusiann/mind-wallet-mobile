@@ -1,20 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import { checkResetCode, forgotPassword } from '../../store/auth';
+import AuthScreenWrapper from '../../components/auth/AuthScreenWrapper';
+import AuthHeader from '../../components/auth/AuthHeader';
+import AuthInput from '../../components/auth/AuthInput';
+import AuthError from '../../components/auth/AuthError';
+import AuthSubmitButton from '../../components/auth/AuthSubmitButton';
+import AuthFooter from '../../components/auth/AuthFooter';
 import createStyles from '../../assets/styles/auth.styles';
 import { COLORS } from '../../constants/theme';
-import { checkResetCode, forgotPassword } from '../../store/auth';
 
 export default function ForgotPasswordScreen() {
     const router = useRouter();
@@ -61,125 +56,58 @@ export default function ForgotPasswordScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                style={{ flex: 1 }}
-            >
-                <ScrollView
-                    contentContainerStyle={styles.scroll}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    {/* HEADER */}
-                    <View style={styles.header}>
-                        <Text style={styles.title}>Şifre Sıfırlama</Text>
-                        <Text style={styles.subtitle}>
-                            {codeSent
-                                ? 'E-postanıza gelen 8 haneli kodu girin.'
-                                : 'E-posta adresinizi girin, şifre sıfırlama kodunu gönderelim.'}
-                        </Text>
-                    </View>
+        <AuthScreenWrapper>
+            <AuthHeader 
+                title="Şifre Sıfırlama" 
+                subtitle={codeSent ? 'E-postanıza gelen 8 haneli kodu girin.' : 'E-posta adresinizi girin, şifre sıfırlama kodunu gönderelim.'} 
+            />
 
-                    {/* FORM CARD */}
-                    <View style={styles.card}>
-                        {/* EMAIL ROW */}
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>E-posta Adresi</Text>
-                            <View style={styles.inputRow}>
-                                <View style={[styles.inputContainer, styles.inputRowInput]}>
-                                    <Ionicons
-                                        name="mail-outline"
-                                        size={20}
-                                        color={COLORS.placeholderText}
-                                        style={styles.inputIcon}
-                                    />
-                                    <TextInput
-                                        style={styles.input}
-                                        value={email}
-                                        onChangeText={setEmail}
-                                        keyboardType="email-address"
-                                        autoCapitalize="none"
-                                        autoCorrect={false}
-                                        editable={!codeSent}
-                                        underlineColorAndroid="transparent"
-                                    />
-                                </View>
-                                <TouchableOpacity
-                                    style={[styles.sendButton, codeSent && styles.sendButtonSent]}
-                                    onPress={handleSendCode}
-                                    disabled={codeSent || sendLoading}
-                                >
-                                    {sendLoading ? (
-                                        <ActivityIndicator size="small" color={COLORS.white} />
-                                    ) : (
-                                        <Ionicons
-                                            name={codeSent ? 'checkmark' : 'send-outline'}
-                                            size={20}
-                                            color={COLORS.white}
-                                        />
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
+            <View style={styles.card}>
+                <View style={styles.inputRow}>
+                    <AuthInput
+                        label="E-posta Adresi"
+                        icon="mail-outline"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        editable={!codeSent}
+                        containerStyle={styles.inputRowInput}
+                    />
+                    <AuthSubmitButton 
+                        title="" 
+                        icon={codeSent ? 'checkmark' : 'send-outline'}
+                        onPress={handleSendCode} 
+                        loading={sendLoading}
+                        style={[styles.sendButton, codeSent && styles.sendButtonSent, { alignSelf: 'flex-end', marginTop: 18 }]}
+                    />
+                </View>
 
-                        {/* CODE INPUT — visible after code is sent */}
-                        {codeSent && (
-                            <>
-                                <View style={styles.inputGroup}>
-                                    <Text style={styles.inputLabel}>Sıfırlama Kodu</Text>
-                                    <View style={styles.inputContainer}>
-                                        <Ionicons
-                                            name="key-outline"
-                                            size={20}
-                                            color={COLORS.placeholderText}
-                                            style={styles.inputIcon}
-                                        />
-                                        <TextInput
-                                            style={styles.input}
-                                            value={code}
-                                            onChangeText={(t) => setCode(t.toUpperCase())}
-                                            keyboardType="default"
-                                            autoCapitalize="characters"
-                                            maxLength={8}
-                                            underlineColorAndroid="transparent"
-                                        />
-                                    </View>
-                                </View>
+                {codeSent && (
+                    <>
+                        <AuthInput
+                            label="Sıfırlama Kodu"
+                            icon="key-outline"
+                            value={code}
+                            onChangeText={(t) => setCode(t.toUpperCase())}
+                            autoCapitalize="characters"
+                            maxLength={8}
+                        />
 
-                                {/* SUBMIT BUTTON */}
-                                <TouchableOpacity
-                                    style={[styles.submitButton, verifyLoading && styles.submitButtonDisabled]}
-                                    onPress={handleVerifyCode}
-                                    disabled={verifyLoading}
-                                >
-                                    {verifyLoading ? (
-                                        <ActivityIndicator size="small" color={COLORS.white} />
-                                    ) : (
-                                        <>
-                                            <Text style={styles.submitButtonText}>Kodu Doğrula</Text>
-                                            <Ionicons name="arrow-forward" size={18} color={COLORS.white} />
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                            </>
-                        )}
+                        <AuthSubmitButton title="Kodu Doğrula" onPress={handleVerifyCode} loading={verifyLoading} />
+                    </>
+                )}
 
-                        {/* ERROR */}
-                        {error ? (
-                            <View style={styles.errorBox}>
-                                <Text style={styles.errorText}>{error}</Text>
-                            </View>
-                        ) : null}
-                    </View>
+                <AuthError error={error} />
+            </View>
 
-                    {/* FOOTER */}
-                    <TouchableOpacity style={styles.footer} onPress={() => router.back()}>
-                        <Ionicons name="arrow-back-outline" size={16} color={COLORS.textSecondary} />
-                        <Text style={styles.footerText}>Geri Dön</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+            <AuthFooter 
+                text="Geri Dön" 
+                linkText="" 
+                onPress={() => router.back()} 
+                isBack
+            />
+        </AuthScreenWrapper>
     );
 }
