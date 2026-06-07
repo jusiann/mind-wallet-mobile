@@ -34,6 +34,13 @@ export const COLORS = {
     onError: '#FFFFFF',
     errorContainer: '#F9DEDC',
 
+    success: '#14B8A6', // Turquoise (Teal 500)
+    successContainer: '#CCFBF1',
+    info: '#3B82F6', // Vivid Blue (Blue 500)
+    infoContainer: '#DBEAFE',
+    warning: '#F97316', // Orange 500
+    warningContainer: '#FFEDD5',
+
     white: '#FFFFFF',
     black: '#000000',
     transparent: 'transparent',
