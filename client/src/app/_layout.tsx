@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { clearTokens, getAccessToken, getAuthState, getMe, setAuthState, setUserName, subscribeAuthState, tryRefreshToken } from '../store/auth';
 import { getOnboardingCompleted, loadOnboardingState, subscribeOnboarding } from '../store/onboarding';
 import { COLORS } from '../constants/theme';
+import { fetchExchangeRates } from '../constants/currency';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,6 +26,9 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
         if (!loaded && !error) return;
         (async () => {
             try {
+                // Fetch live exchange rates
+                fetchExchangeRates().catch(err => console.error('Error fetching exchange rates:', err));
+                
                 const refreshState = await tryRefreshToken();
                 if (!refreshState.authenticated) {
                     await clearTokens();
