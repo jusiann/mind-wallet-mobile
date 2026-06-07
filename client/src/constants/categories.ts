@@ -22,6 +22,7 @@ export const CAT_META: Record<string, { tr: string; icon: IoniconName }> = {
     Cash:               { tr: 'Nakit',       icon: 'cash-outline' },
 };
 
-export function translateCat(name: string): string {
+export function translateCat(name?: string | null): string {
+    if (!name) return 'Diğer';
     return CAT_META[name]?.tr ?? name;
 }
