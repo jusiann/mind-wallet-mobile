@@ -1,4 +1,11 @@
 import { generateJSON } from '../../gemini.service.js';
+import {
+    NAV_BUTTONS,
+    GOAL_DURATION_BUTTONS,
+    GOAL_CONFIRM_BUTTONS,
+    GOAL_STATUS_EXTRA_BUTTONS,
+    GOAL_CONTRIB_CONFIRM_BUTTONS,
+} from '../../../constants/engine.constants.js';
 
 // Turkish amount parser and enforce short title from old extractor
 const MULTIPLIERS = { bin: 1_000, milyon: 1_000_000, milyar: 1_000_000_000 };
@@ -51,20 +58,20 @@ function findGoalByTitle(input, goals) {
     return goals.find((g) => levenshtein(lower, g.title.toLowerCase()) <= 2) ?? null;
 }
 
-const END_BUTTONS = [
-    { id: 'end_analyze', label: 'Aylık Özet', payload: { action: 'start_analysis' } },
-    { id: 'end_transaction', label: 'İşlem Ekle', payload: { action: 'start_transaction' } },
-    { id: 'end_goal', label: 'Hedef Oluştur', payload: { action: 'start_goal' } },
-    { id: 'end_done', label: 'Hayır, teşekkürler', payload: { action: 'done' } },
-];
+function recoverTitleFromHistory(chatHistory) {
+    const lastAssistant = chatHistory.filter((m) => m.role === 'model').slice(-1)[0]?.content ?? '';
+    const match = lastAssistant.match(/"([^"]+)" hedefi için ne kadar/i);
+    return match?.[1] ?? null;
+}
 
 export const goalAgent = async (ctx, input, actionPayload, chatHistory, classification) => {
     const { activeGoals = [] } = ctx;
 
-    if (actionPayload?.action === 'set_deadline') {
+    // ── set_deadline (deterministik, Gemini yok) ──
+    if (actionPayload?.action === 'set_deadline' || classification === 'SET_DEADLINE') {
         const goalData = actionPayload.pendingGoalData;
         if (!goalData) {
-            return { message: 'Hedef verisi bulunamadı. Lütfen tekrar dene.', buttons: END_BUTTONS };
+            return { message: 'Hedef verisi bulunamadı. Lütfen tekrar dene.', buttons: NAV_BUTTONS };
         }
         const months = actionPayload.months;
         const deadline = new Date();
@@ -74,20 +81,60 @@ export const goalAgent = async (ctx, input, actionPayload, chatHistory, classifi
 
         return {
             classification: 'GOAL_CREATION',
-            message: `${goalData.target_amount.toLocaleString('tr-TR')} TL hedef, ${months} aylık süre (${deadlineStr}). Oluşturayım mı?`,
+            message: `${goalData.title} için ${goalData.target_amount.toLocaleString('tr-TR')} TL hedef, ${months} aylık süre. Oluşturayım mı?`,
+            buttons: GOAL_CONFIRM_BUTTONS(goalWithDeadline),
+        };
+    }
+
+    // ── start_goal_contribution (hedef listesi göster) ──
+    if (classification === 'START_CONTRIBUTION') {
+        if (!activeGoals?.length) {
+            return {
+                classification: 'GOAL_CONTRIBUTION',
+                message: 'Henüz aktif hedefin yok. Önce bir hedef oluştur!',
+                buttons: [{ id: 'gc_create', label: 'Hedef Oluştur', icon: 'flag-outline', payload: { action: 'start_goal' } }],
+            };
+        }
+        if (activeGoals.length === 1) {
+            const g = activeGoals[0];
+            return {
+                classification: 'GOAL_CONTRIBUTION',
+                message: `"${g.title}" hedefine ne kadar eklemek istiyorsun?`,
+                buttons: [{ id: 'contrib_cancel', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } }],
+            };
+        }
+        return {
+            classification: 'GOAL_CONTRIBUTION',
+            message: 'Hangi hedefe para eklemek istersin?',
             buttons: [
-                { id: 'goal_confirm', label: 'Evet, oluştur', payload: { action: 'confirm_goal', goal: goalWithDeadline } },
-                { id: 'goal_cancel', label: 'İptal', payload: { action: 'cancel' } },
+                ...activeGoals.slice(0, 4).map((g, i) => ({
+                    id: `select_goal_${i}`,
+                    label: `${g.title}`,
+                    icon: 'flag-outline',
+                    payload: { action: 'select_goal', goalId: g.id, goalTitle: g.title },
+                })),
+                { id: 'contrib_cancel', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } },
             ],
         };
     }
 
+    // ── select_goal (hedefe para ekleme başlat) ──
+    if (classification === 'SELECT_GOAL') {
+        const goalTitle = actionPayload?.goalTitle ?? 'Hedef';
+        return {
+            classification: 'GOAL_CONTRIBUTION',
+            message: `"${goalTitle}" hedefine ne kadar eklemek istiyorsun?`,
+            buttons: [{ id: 'select_cancel', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } }],
+        };
+    }
+
+    // ── GOAL_STATUS ──
     if (classification === 'GOAL_STATUS') {
         if (!activeGoals?.length) {
             return {
                 classification,
                 message: 'Henüz aktif hedefin yok. Mindy ile yeni bir hedef oluşturabilirsin!',
-                buttons: [{ id: 'gs_create', label: 'Hedef Oluştur', payload: { action: 'start_goal' } }],
+                buttons: [{ id: 'gs_create', label: 'Hedef Oluştur', icon: 'flag-outline', payload: { action: 'start_goal' } }],
             };
         }
         const lines = activeGoals.map((g) => {
@@ -98,15 +145,20 @@ export const goalAgent = async (ctx, input, actionPayload, chatHistory, classifi
         return {
             classification,
             message: `Hedeflerinin durumu:\n\n${lines.join('\n')}`,
-            buttons: END_BUTTONS,
+            buttons: [...GOAL_STATUS_EXTRA_BUTTONS, ...NAV_BUTTONS.slice(0, 3)],
         };
     }
 
+    // ── GOAL_CREATION ──
     if (classification === 'GOAL_CREATION') {
         let pendingData = null;
         const fast = extractGoalFromInput(input);
         if (fast) {
-            pendingData = { type: 'goal', title: fast.title, target_amount: fast.target_amount };
+            let title = fast.title;
+            if (title === 'Yeni Hedef') {
+                title = recoverTitleFromHistory(chatHistory) ?? 'Yeni Hedef';
+            }
+            pendingData = { type: 'goal', title, target_amount: fast.target_amount };
         } else {
             const prompt = `Extract goal details from the user message.
                             Message: "${input}"
@@ -123,7 +175,10 @@ export const goalAgent = async (ctx, input, actionPayload, chatHistory, classifi
             const result = await generateJSON(prompt, null);
             if (result) {
                 const rawTitle = typeof result.title === 'string' ? result.title : '';
-                const safeTitle = enforceShortTitle(rawTitle) || 'Yeni Hedef';
+                let safeTitle = enforceShortTitle(rawTitle) || 'Yeni Hedef';
+                if (safeTitle === 'Yeni Hedef') {
+                    safeTitle = recoverTitleFromHistory(chatHistory) ?? 'Yeni Hedef';
+                }
                 const target_amount = typeof result.target_amount === 'number' && result.target_amount > 0 ? result.target_amount : 0;
                 pendingData = { type: 'goal', title: safeTitle, target_amount };
             }
@@ -132,8 +187,8 @@ export const goalAgent = async (ctx, input, actionPayload, chatHistory, classifi
         if (!pendingData) {
             return {
                 classification,
-                message: 'Hedef tutarı anlaşılamadı. Örnek: "Tatil için 5000 TL biriktirmek istiyorum"',
-                buttons: END_BUTTONS,
+                message: 'Hedef tutarı anlaşılamadı. Örnek: "Tatil için 5.000 TL biriktirmek istiyorum"',
+                buttons: NAV_BUTTONS,
             };
         }
 
@@ -141,29 +196,25 @@ export const goalAgent = async (ctx, input, actionPayload, chatHistory, classifi
             return {
                 classification,
                 message: `"${pendingData.title}" hedefi için ne kadar biriktirmek istiyorsun?`,
-                buttons: [{ id: 'gc_cancel', label: 'İptal', payload: { action: 'cancel' } }],
+                buttons: [{ id: 'gc_cancel', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } }],
             };
         }
 
         return {
             classification,
             message: `${pendingData.title} için ${pendingData.target_amount.toLocaleString('tr-TR')} TL hedef belirliyoruz. Ne kadar sürede biriktirmek istersin?`,
-            buttons: [
-                { id: 'dl_3m', label: '3 ay', payload: { action: 'set_deadline', months: 3, pendingGoalData: pendingData } },
-                { id: 'dl_6m', label: '6 ay', payload: { action: 'set_deadline', months: 6, pendingGoalData: pendingData } },
-                { id: 'dl_1y', label: '1 yıl', payload: { action: 'set_deadline', months: 12, pendingGoalData: pendingData } },
-                { id: 'dl_2y', label: '2 yıl', payload: { action: 'set_deadline', months: 24, pendingGoalData: pendingData } },
-            ],
+            buttons: GOAL_DURATION_BUTTONS(pendingData),
         };
     }
 
+    // ── GOAL_CONTRIBUTION ──
     if (classification === 'GOAL_CONTRIBUTION') {
         const amount = parseTurkishAmount(input);
         if (amount <= 0) {
             return {
                 classification,
                 message: 'Tutar anlaşılamadı. Örnek: "Tatil hedefime 500 TL ekle"',
-                buttons: END_BUTTONS,
+                buttons: NAV_BUTTONS,
             };
         }
 
@@ -173,10 +224,7 @@ export const goalAgent = async (ctx, input, actionPayload, chatHistory, classifi
             return {
                 classification,
                 message: `${amount.toLocaleString('tr-TR')} TL'yi "${matchedGoal.title}" hedefine ekleyeyim mi?`,
-                buttons: [
-                    { id: 'contrib_yes', label: 'Evet, ekle', payload: { action: 'confirm_goal_contribution', contribution: { goalId: matchedGoal.id, goalTitle: matchedGoal.title, amount } } },
-                    { id: 'contrib_no', label: 'İptal', payload: { action: 'cancel' } },
-                ],
+                buttons: GOAL_CONTRIB_CONFIRM_BUTTONS({ goalId: matchedGoal.id, goalTitle: matchedGoal.title, amount }),
             };
         }
 
@@ -187,20 +235,21 @@ export const goalAgent = async (ctx, input, actionPayload, chatHistory, classifi
                 buttons: [
                     ...activeGoals.slice(0, 3).map((g, i) => ({
                         id: `contrib_goal_${i}`,
-                        label: g.title,
+                        label: `${g.title}`,
+                        icon: 'flag-outline',
                         payload: { action: 'confirm_goal_contribution', contribution: { goalId: g.id, goalTitle: g.title, amount } },
                     })),
-                    { id: 'contrib_cancel', label: 'İptal', payload: { action: 'cancel' } },
+                    { id: 'contrib_cancel', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } },
                 ],
             };
         }
 
         return {
             classification,
-            message: 'Aktif hedefin yok. Önce bir hedef oluştur.',
-            buttons: [{ id: 'gc_create', label: 'Hedef Oluştur', payload: { action: 'start_goal' } }],
+            message: 'Aktif hedefin yok. Önce bir hedef oluştur!',
+            buttons: [{ id: 'gc_create', label: 'Hedef Oluştur', icon: 'flag-outline', payload: { action: 'start_goal' } }],
         };
     }
 
-    return { message: 'Hedef isteği anlaşılamadı.', buttons: END_BUTTONS };
+    return { message: 'Hedef isteği anlaşılamadı.', buttons: NAV_BUTTONS };
 };

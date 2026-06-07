@@ -43,9 +43,11 @@ const createStyles = (COLORS: any) =>
         },
         suggestionChip: {
             backgroundColor: COLORS.primaryContainer,
-            borderRadius: 20,
-            paddingHorizontal: 14,
-            paddingVertical: 8,
+            borderRadius: 16,
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            flexDirection: 'row',
+            alignItems: 'center',
         },
         suggestionText: {
             fontFamily: 'HankenGrotesk_500Medium',
@@ -97,6 +99,27 @@ const createStyles = (COLORS: any) =>
         bubbleTextMindy: {
             color: COLORS.onPrimaryContainer,
         },
+        bubbleTransaction: {
+            backgroundColor: COLORS.infoContainer,
+            borderBottomLeftRadius: 4,
+        },
+        bubbleTransactionText: {
+            color: COLORS.info,
+        },
+        bubbleGoal: {
+            backgroundColor: COLORS.successContainer,
+            borderBottomLeftRadius: 4,
+        },
+        bubbleGoalText: {
+            color: COLORS.success,
+        },
+        bubbleWarning: {
+            backgroundColor: COLORS.warningContainer,
+            borderBottomLeftRadius: 4,
+        },
+        bubbleWarningText: {
+            color: COLORS.warning,
+        },
         bubbleTextUser: {
             color: COLORS.white,
         },
@@ -116,6 +139,9 @@ const createStyles = (COLORS: any) =>
             paddingVertical: 7,
             borderWidth: 1.5,
             borderColor: COLORS.primary,
+            flexShrink: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
         },
         actionBtnActive: {
             backgroundColor: COLORS.primary,
@@ -128,6 +154,7 @@ const createStyles = (COLORS: any) =>
             fontFamily: 'HankenGrotesk_500Medium',
             fontSize: 13,
             color: COLORS.primary,
+            flexShrink: 1,
         },
         actionBtnTextActive: {
             color: COLORS.white,

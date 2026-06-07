@@ -1,6 +1,7 @@
-import { generateJSON, generateText } from '../../gemini.service.js';
+import { generateJSON } from '../../gemini.service.js';
 import { toTR } from '../categoryMap.js';
 import { runGuardRail } from '../guardrail.js';
+import { NAV_BUTTONS, TX_CONFIRM_BUTTONS } from '../../../constants/engine.constants.js';
 
 export const transactionAgent = async (ctx, input, chatHistory) => {
     const { categories, activeGoals } = ctx;
@@ -29,12 +30,7 @@ export const transactionAgent = async (ctx, input, chatHistory) => {
         return {
             classification: 'TRANSACTION',
             message: 'İşlem tutarı anlaşılamadı. Örnek: "Markete 150 TL harcadım"',
-            buttons: [
-                { id: 'end_analyze', label: 'Aylık Özet', payload: { action: 'start_analysis' } },
-                { id: 'end_transaction', label: 'İşlem Ekle', payload: { action: 'start_transaction' } },
-                { id: 'end_goal', label: 'Hedef Oluştur', payload: { action: 'start_goal' } },
-                { id: 'end_done', label: 'Hayır, teşekkürler', payload: { action: 'done' } },
-            ],
+            buttons: NAV_BUTTONS,
         };
     }
 
@@ -60,7 +56,7 @@ export const transactionAgent = async (ctx, input, chatHistory) => {
     const typeLabel = pendingData.transactionType === 'INCOME' ? 'gelir' : 'gider';
 
     let msg = warning
-        ? `${warning}\n\n${pendingData.amount.toLocaleString('tr-TR')} TL tutarındaki ${categoryLabel} ${typeLabel}ini yine de kaydedeyim mi?`
+        ? `Uyarı: ${warning}\n\n${pendingData.amount.toLocaleString('tr-TR')} TL tutarındaki ${categoryLabel} ${typeLabel}ini yine de kaydedeyim mi?`
         : `${pendingData.amount.toLocaleString('tr-TR')} TL tutarındaki ${categoryLabel} ${typeLabel}ini kaydedeyim mi?`;
 
     if (pendingData.description && pendingData.description !== input) {
@@ -71,9 +67,6 @@ export const transactionAgent = async (ctx, input, chatHistory) => {
         classification: 'TRANSACTION',
         message: msg,
         warning,
-        buttons: [
-            { id: 'confirm_yes', label: 'Evet, kaydet', payload: { action: 'confirm_transaction', transaction: pendingData } },
-            { id: 'confirm_no', label: 'İptal', payload: { action: 'cancel' } },
-        ],
+        buttons: TX_CONFIRM_BUTTONS(pendingData),
     };
 };

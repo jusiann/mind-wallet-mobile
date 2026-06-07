@@ -1,4 +1,5 @@
 import { toTR } from '../categoryMap.js';
+import { NAV_BUTTONS } from '../../../constants/engine.constants.js';
 
 function computeCategoryDeltas(currentMonthTx, previousMonthTx, categories) {
     const nonEssentialIds = new Set(categories.filter((c) => !c.is_essential).map((c) => c.id));
@@ -69,19 +70,12 @@ function buildCategoryButtons(categoryDeltas = []) {
     });
 }
 
-const END_BUTTONS = [
-    { id: 'end_analyze', label: 'Aylık Özet', payload: { action: 'start_analysis' } },
-    { id: 'end_transaction', label: 'İşlem Ekle', payload: { action: 'start_transaction' } },
-    { id: 'end_goal', label: 'Hedef Oluştur', payload: { action: 'start_goal' } },
-    { id: 'end_done', label: 'Hayır, teşekkürler', payload: { action: 'done' } },
-];
-
 export const analysisAgent = async (ctx, input, actionPayload, chatHistory) => {
     const { currentMonthTx = [], previousMonthTx = [], categories = [], activeGoals = [] } = ctx;
 
     const currentExpenses = currentMonthTx.filter((t) => t.type === 'EXPENSE');
     if (currentExpenses.length === 0) {
-        return { message: 'Analiz için yeterli harcama verisi bulunamadı.', buttons: END_BUTTONS, classification: 'ANALYSIS' };
+        return { message: 'Analiz için yeterli harcama verisi bulunamadı.', buttons: NAV_BUTTONS, classification: 'ANALYSIS' };
     }
 
     const hasPreviousData = previousMonthTx.filter((t) => t.type === 'EXPENSE').length > 0;
@@ -106,10 +100,11 @@ export const analysisAgent = async (ctx, input, actionPayload, chatHistory) => {
                 buttons: [
                     ...activeGoals.slice(0, 3).map((g, i) => ({
                         id: `route_goal_${i}`,
-                        label: g.title,
+                        label: `${g.title}`,
+                        icon: 'flag-outline',
                         payload: { action: 'confirm_pledge', pledge: { goalId: g.id, goalTitle: g.title, amount, category: cat, categorySpent: actionPayload.categorySpent ?? 0 } },
                     })),
-                    { id: 'route_cancel', label: 'Sonra', payload: { action: 'cancel' } },
+                    { id: 'route_cancel', label: 'Sonra', icon: 'time-outline', payload: { action: 'cancel' } },
                 ],
             };
         }
@@ -120,16 +115,16 @@ export const analysisAgent = async (ctx, input, actionPayload, chatHistory) => {
                 classification: 'ANALYSIS',
                 message: `${amount > 0 ? `${Number(amount).toLocaleString('tr-TR')} TL` : 'Tasarruf taahhüdü'} "${targetGoal.title}" hedefine söz olarak eklensin mi?\n\nBu ay bu kategoride gerçekten daha az harcarsan, tutarı hedefe aktaracağım.`,
                 buttons: [
-                    { id: 'route_yes', label: 'Evet, söz ver', payload: { action: 'confirm_pledge', pledge: { goalId: targetGoal.id, goalTitle: targetGoal.title, amount, category: cat, categorySpent: actionPayload.categorySpent ?? 0 } } },
-                    { id: 'route_no', label: 'Sonra', payload: { action: 'cancel' } },
+                    { id: 'route_yes', label: 'Evet, söz ver', icon: 'checkmark-circle-outline', payload: { action: 'confirm_pledge', pledge: { goalId: targetGoal.id, goalTitle: targetGoal.title, amount, category: cat, categorySpent: actionPayload.categorySpent ?? 0 } } },
+                    { id: 'route_no', label: 'Sonra', icon: 'time-outline', payload: { action: 'cancel' } },
                 ],
             };
         }
 
         return {
             classification: 'ANALYSIS',
-            message: 'Aktif hedefin yok. Önce bir hedef oluştur.',
-            buttons: [{ id: 'gc_create', label: 'Hedef Oluştur', payload: { action: 'start_goal' } }],
+            message: 'Aktif hedefin yok. Önce bir hedef oluştur!',
+            buttons: [{ id: 'gc_create', label: 'Hedef Oluştur', icon: 'flag-outline', payload: { action: 'start_goal' } }],
         };
     }
 
@@ -151,8 +146,8 @@ export const analysisAgent = async (ctx, input, actionPayload, chatHistory) => {
 
         const savingsButtons = delta > 0 && hasGoals
             ? [
-                { id: 'tip_route_all', label: `Tamamını (${deltaStr} TL)`, payload: { action: 'route_savings', category: cat, amount: delta, categorySpent: totalSpent } },
-                ...(half > 0 ? [{ id: 'tip_route_half', label: `Yarısını (${halfStr} TL)`, payload: { action: 'route_savings', category: cat, amount: half, categorySpent: totalSpent } }] : []),
+                { id: 'tip_route_all', label: `Tamamını (${deltaStr} TL)`, icon: 'cash-outline', payload: { action: 'route_savings', category: cat, amount: delta, categorySpent: totalSpent } },
+                ...(half > 0 ? [{ id: 'tip_route_half', label: `Yarısını (${halfStr} TL)`, icon: 'cash-outline', payload: { action: 'route_savings', category: cat, amount: half, categorySpent: totalSpent } }] : []),
             ]
             : [];
 
@@ -160,9 +155,9 @@ export const analysisAgent = async (ctx, input, actionPayload, chatHistory) => {
             classification: 'ANALYSIS',
             message: msg,
             buttons: [
-                { id: 'tip_budget', label: 'İpuçları ver', payload: { action: 'get_tips', category: cat } },
+                { id: 'tip_budget', label: 'İpuçları ver', icon: 'bulb-outline', payload: { action: 'get_tips', category: cat } },
                 ...savingsButtons,
-                { id: 'tip_back', label: 'İptal', payload: { action: 'cancel' } },
+                { id: 'tip_back', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } },
             ],
         };
     }
@@ -185,22 +180,22 @@ export const analysisAgent = async (ctx, input, actionPayload, chatHistory) => {
     if (/tasarruf/i.test(input ?? '')) {
         const buttons = [];
         if (hasGoals && hasSavings) {
-            buttons.push({ id: 'route_savings_main', label: `${Number(detectedSavings).toLocaleString('tr-TR')} TL → Söz Ver`, payload: { action: 'route_savings', amount: detectedSavings } });
+            buttons.push({ id: 'route_savings_main', label: `${Number(detectedSavings).toLocaleString('tr-TR')} TL → Söz Ver`, icon: 'cash-outline', payload: { action: 'route_savings', amount: detectedSavings } });
         }
         if (catButtons[0]) buttons.push(catButtons[0]);
         if (catButtons[1]) buttons.push(catButtons[1]);
-        return { classification: 'ANALYSIS', message, buttons: buttons.length ? buttons : END_BUTTONS };
+        return { classification: 'ANALYSIS', message, buttons: buttons.length ? buttons : NAV_BUTTONS };
     }
 
     if (/nasıl gidiy|bu ay/i.test(input ?? '')) {
         const buttons = [...catButtons.slice(0, 2)];
         if (hasGoals && hasSavings) {
-            buttons.push({ id: 'route_savings_status', label: `${Number(detectedSavings).toLocaleString('tr-TR')} TL Tasarruf Sözü`, payload: { action: 'route_savings', amount: detectedSavings } });
+            buttons.push({ id: 'route_savings_status', label: `${Number(detectedSavings).toLocaleString('tr-TR')} TL Tasarruf Sözü`, icon: 'cash-outline', payload: { action: 'route_savings', amount: detectedSavings } });
         } else {
-            buttons.push({ id: 'status_end', label: 'Tamam', payload: { action: 'done' } });
+            buttons.push({ id: 'status_end', label: 'Tamam', icon: 'checkmark-circle-outline', payload: { action: 'done' } });
         }
-        return { classification: 'ANALYSIS', message, buttons: buttons.length ? buttons : END_BUTTONS };
+        return { classification: 'ANALYSIS', message, buttons: buttons.length ? buttons : NAV_BUTTONS };
     }
 
-    return { classification: 'ANALYSIS', message, buttons: catButtons.length ? catButtons : END_BUTTONS, detectedSavings };
+    return { classification: 'ANALYSIS', message, buttons: catButtons.length ? catButtons : NAV_BUTTONS, detectedSavings };
 };
