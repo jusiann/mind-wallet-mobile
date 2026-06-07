@@ -448,7 +448,7 @@ export default function TransactScreen() {
             {loading ? (
                 <LoadingState />
             ) : sections.length === 0 ? (
-                <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+                <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20 }}>
                     <View style={styles.quickActionsRow}>
                         <QuickActionCard title="Aylık Rapor" icon="bar-chart-outline" onPress={() => router.push('/report' as any)} />
                         <QuickActionCard title="Otom. İşlemler" icon="repeat-outline" onPress={() => router.push('/recurring' as any)} />
