@@ -14,7 +14,7 @@ export const getMonthlyReport = async (req, res) => {
         const nextMonthStart = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 1).toISOString();
         const prevMonthStart = new Date(targetDate.getFullYear(), targetDate.getMonth() - 1, 1).toISOString();
 
-        const [totalsResult, lastMonthTotalsResult, categoriesResult, daysResult] = await Promise.all([
+        const [totalsResult, lastMonthTotalsResult, categoriesResult, daysResult, maxExpenseResult] = await Promise.all([
             // 1. Current month totals
             db.query(
                 `SELECT 
@@ -40,15 +40,15 @@ export const getMonthlyReport = async (req, res) => {
             // 3. Category breakdown for expenses
             db.query(
                 `SELECT 
-                    c.name AS category_name,
+                    COALESCE(c.name, 'Other') AS category_name,
                     SUM(t.amount) AS amount
                  FROM transactions t
-                 JOIN categories c ON t.category_id = c.id
+                 LEFT JOIN categories c ON t.category_id = c.id
                  WHERE t.user_id = $1 
                    AND t.type = 'EXPENSE'
                    AND t.transaction_timestamp >= $2 
                    AND t.transaction_timestamp < $3
-                 GROUP BY c.name
+                 GROUP BY COALESCE(c.name, 'Other')
                  ORDER BY amount DESC`,
                 [userId, currentMonthStart, nextMonthStart]
             ),
@@ -66,6 +66,17 @@ export const getMonthlyReport = async (req, res) => {
                  ORDER BY amount DESC
                  LIMIT 5`,
                 [userId, currentMonthStart, nextMonthStart]
+            ),
+            // 5. Biggest single expense
+            db.query(
+                `SELECT 
+                    COALESCE(MAX(amount), 0) AS max_amount
+                 FROM transactions
+                 WHERE user_id = $1
+                   AND type = 'EXPENSE'
+                   AND transaction_timestamp >= $2 
+                   AND transaction_timestamp < $3`,
+                [userId, currentMonthStart, nextMonthStart]
             )
         ]);
 
@@ -82,6 +93,16 @@ export const getMonthlyReport = async (req, res) => {
 
         const income_change_pct = prev_income > 0 ? ((total_income - prev_income) / prev_income) * 100 : (total_income > 0 ? 100 : 0);
         const expense_change_pct = prev_expense > 0 ? ((total_expense - prev_expense) / prev_expense) * 100 : (total_expense > 0 ? 100 : 0);
+
+        let days_passed = 1;
+        const now = new Date();
+        if (targetDate.getFullYear() === now.getFullYear() && targetDate.getMonth() === now.getMonth()) {
+            days_passed = Math.max(1, now.getDate());
+        } else if (targetDate < now) {
+            days_passed = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate();
+        }
+        const daily_avg_spend = total_expense / days_passed;
+        const biggest_expense = parseFloat(maxExpenseResult.rows[0].max_amount);
 
         const category_breakdown = categoriesResult.rows.map(row => {
             const amount = parseFloat(row.amount);
@@ -109,6 +130,8 @@ export const getMonthlyReport = async (req, res) => {
                     income_change_pct,
                     expense_change_pct
                 },
+                daily_avg_spend,
+                biggest_expense,
                 category_breakdown,
                 top_days
             }
