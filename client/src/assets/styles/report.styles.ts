@@ -73,6 +73,7 @@ const createStyles = (COLORS: any) =>
         summaryBox: {
             flex: 1,
             gap: 4,
+            alignItems: 'center',
         },
         summaryLabel: {
             fontFamily: 'HankenGrotesk_500Medium',

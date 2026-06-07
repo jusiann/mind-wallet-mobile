@@ -14,6 +14,11 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { COLORS } from '../../constants/theme';
 import { CAT_META } from '../../constants/categories';
 import createStyles from '../../assets/styles/report.styles';
+import LoadingState from '../../components/tabs/LoadingState';
+import ErrorState from '../../components/tabs/ErrorState';
+import StatRow from '../../components/tabs/report/StatRow';
+import CategoryBreakdownRow from '../../components/tabs/report/CategoryBreakdownRow';
+import TopDayRow from '../../components/tabs/report/TopDayRow';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -61,14 +66,7 @@ export default function ReportScreen() {
         setCurrentDate(d);
     }
 
-    const renderTrendIcon = (pct: number, inverted = false) => {
-        if (pct === 0) return <Ionicons name="remove" size={16} color={COLORS.textSecondary} style={styles.trendIcon} />;
-        const isPositive = pct > 0;
-        const isGood = inverted ? !isPositive : isPositive;
-        const color = isGood ? '#2E7D32' : '#E53935';
-        const iconName = isPositive ? 'trending-up' : 'trending-down';
-        return <Ionicons name={iconName} size={16} color={color} style={styles.trendIcon} />;
-    };
+
 
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
@@ -93,13 +91,9 @@ export default function ReportScreen() {
                 </View>
 
                 {loading ? (
-                    <View style={styles.center}>
-                        <ActivityIndicator size="large" color={COLORS.primary} />
-                    </View>
+                    <LoadingState />
                 ) : error ? (
-                    <View style={styles.center}>
-                        <Text style={styles.emptyText}>{error}</Text>
-                    </View>
+                    <ErrorState error={error} />
                 ) : report ? (
                     <>
                         {/* SUMMARY CARD */}
@@ -131,34 +125,22 @@ export default function ReportScreen() {
                         <View style={styles.card}>
                             <Text style={styles.cardTitle}>Özet İstatistikler</Text>
 
-                            <View style={styles.statRow}>
-                                <Text style={styles.statLabel}>Tasarruf Oranı</Text>
-                                <View style={styles.statValueBox}>
-                                    <Text style={styles.statValue}>%{report.savings_rate.toFixed(1)}</Text>
-                                </View>
-                            </View>
+                            <StatRow 
+                                label="Tasarruf Oranı" 
+                                value={`%${report.savings_rate.toFixed(1)}`} 
+                            />
 
-                            <View style={styles.statRow}>
-                                <Text style={styles.statLabel}>Gelir Değişimi (Geçen Aya Göre)</Text>
-                                <View style={styles.statValueBox}>
-                                    <Text style={styles.statValue}>
-                                        {report.comparison.income_change_pct > 0 ? '+' : ''}
-                                        {report.comparison.income_change_pct.toFixed(1)}%
-                                    </Text>
-                                    {renderTrendIcon(report.comparison.income_change_pct)}
-                                </View>
-                            </View>
+                            <StatRow 
+                                label="Günlük Ortalama Harcama" 
+                                value={formatCurrency(report.daily_avg_spend)} 
+                            />
 
-                            <View style={[styles.statRow, { borderBottomWidth: 0 }]}>
-                                <Text style={styles.statLabel}>Gider Değişimi (Geçen Aya Göre)</Text>
-                                <View style={styles.statValueBox}>
-                                    <Text style={styles.statValue}>
-                                        {report.comparison.expense_change_pct > 0 ? '+' : ''}
-                                        {report.comparison.expense_change_pct.toFixed(1)}%
-                                    </Text>
-                                    {renderTrendIcon(report.comparison.expense_change_pct, true)}
-                                </View>
-                            </View>
+                            <StatRow 
+                                label="En Büyük Harcama" 
+                                value={formatCurrency(report.biggest_expense)} 
+                            />
+
+
                         </View>
 
                         {/* CATEGORY BREAKDOWN */}
@@ -170,20 +152,13 @@ export default function ReportScreen() {
                                 report.category_breakdown.map((cat, idx) => {
                                     const meta = CAT_META[cat.category_name] ?? { tr: cat.category_name, icon: 'wallet-outline' as IoniconName };
                                     return (
-                                        <View key={idx} style={styles.catRow}>
-                                            <View style={styles.iconBox}>
-                                                <Ionicons name={meta.icon} size={20} color={COLORS.primary} />
-                                            </View>
-                                            <View style={styles.catInfo}>
-                                                <View style={styles.catHeader}>
-                                                    <Text style={styles.catName}>{meta.tr} (%{cat.percentage.toFixed(0)})</Text>
-                                                    <Text style={styles.catAmount}>{formatCurrency(cat.amount)}</Text>
-                                                </View>
-                                                <View style={styles.catBarBg}>
-                                                    <View style={[styles.catBarFill, { width: `${cat.percentage}%` }]} />
-                                                </View>
-                                            </View>
-                                        </View>
+                                        <CategoryBreakdownRow
+                                            key={idx}
+                                            name={meta.tr}
+                                            icon={meta.icon}
+                                            percentage={cat.percentage}
+                                            amountFormatted={formatCurrency(cat.amount)}
+                                        />
                                     );
                                 })
                             )}
@@ -196,12 +171,12 @@ export default function ReportScreen() {
                                 <Text style={styles.emptyText}>Bu ay hiç harcama kaydı yok.</Text>
                             ) : (
                                 report.top_days.map((day, idx) => (
-                                    <View key={idx} style={[styles.topDayRow, idx === report.top_days.length - 1 && { borderBottomWidth: 0 }]}>
-                                        <Text style={styles.topDayDate}>
-                                            {new Date(day.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
-                                        </Text>
-                                        <Text style={styles.topDayAmount}>-{formatCurrency(day.amount)}</Text>
-                                    </View>
+                                    <TopDayRow
+                                        key={idx}
+                                        date={new Date(day.date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
+                                        amountFormatted={formatCurrency(day.amount)}
+                                        isLast={idx === report.top_days.length - 1}
+                                    />
                                 ))
                             )}
                         </View>

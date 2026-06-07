@@ -20,6 +20,8 @@ export type MonthlyReport = {
         income_change_pct: number;
         expense_change_pct: number;
     };
+    daily_avg_spend: number;
+    biggest_expense: number;
     category_breakdown: CategoryBreakdown[];
     top_days: TopDay[];
 };

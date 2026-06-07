@@ -16,9 +16,11 @@ import { CategorySpend, fetchMonthlyExpensesByCategory } from '../../store/trans
 import { translateCat } from '../../constants/categories';
 import { COLORS } from '../../constants/theme';
 import { getUserInitials } from '../../store/auth';
-import { pendingMessage } from '../../store/engine';
+import { useEngineStore } from '../../store/useEngineStore';
 import createStyles, { SCREEN_WIDTH, CHART_COLORS, CHART_SIZE, OUTER_R, INNER_R } from '../../assets/styles/dashboard.styles';
 import { useCurrency } from '../../hooks/useCurrency';
+import LoadingState from '../../components/tabs/LoadingState';
+import ErrorState from '../../components/tabs/ErrorState';
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
     const rad = ((angleDeg - 90) * Math.PI) / 180;
@@ -76,21 +78,27 @@ export default function DashboardScreen() {
         });
     }, [initials]);
 
+    const isLoaded = useRef(false);
     useFocusEffect(
         useCallback(() => {
+            const shouldRefresh = useEngineStore.getState().consumeRefresh();
             setInitials(getUserInitials());
-            Promise.all([getDashboard(), fetchMonthlyExpensesByCategory()]).then(
-                ([dashRes, spendRes]) => {
-                    if (dashRes.success) {
-                        setData(dashRes.data!);
-                        setError('');
-                    } else {
-                        setError(dashRes.message ?? 'Yüklenemedi.');
-                    }
-                    if (spendRes.success && spendRes.data) setCategorySpend(spendRes.data);
-                    setLoading(false);
-                },
-            );
+            
+            if (shouldRefresh || !isLoaded.current) {
+                isLoaded.current = true;
+                Promise.all([getDashboard(), fetchMonthlyExpensesByCategory()]).then(
+                    ([dashRes, spendRes]) => {
+                        if (dashRes.success) {
+                            setData(dashRes.data!);
+                            setError('');
+                        } else {
+                            setError(dashRes.message ?? 'Yüklenemedi.');
+                        }
+                        if (spendRes.success && spendRes.data) setCategorySpend(spendRes.data);
+                        setLoading(false);
+                    },
+                );
+            }
         }, []),
     );
 
@@ -106,13 +114,9 @@ export default function DashboardScreen() {
     return (
         <SafeAreaView style={styles.safe} edges={[]}>
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size='large' color={COLORS.primary} />
-                </View>
+                <LoadingState />
             ) : error ? (
-                <View style={styles.center}>
-                    <Text style={styles.errorText}>{error}</Text>
-                </View>
+                <ErrorState error={error} />
             ) : (
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -151,13 +155,13 @@ export default function DashboardScreen() {
                                                 color={COLORS.primary}
                                             />
                                             <Text style={styles.trendText}>
-                                                {Math.abs(data?.monthly_stats?.expense_vs_last_month_pct ?? 0).toFixed(1)}% Son 30 gün
+                                                %{Math.abs(data?.monthly_stats?.expense_vs_last_month_pct ?? 0).toFixed(1)} Son 30 gün
                                             </Text>
                                         </View>
                                         <TouchableOpacity
                                             style={styles.mindyBtn}
                                             onPress={() => {
-                                                pendingMessage.set('Bu ayki finansal durumumu analiz et ve önerilerini paylaş.');
+                                                useEngineStore.getState().setPendingChat('Bu ayki finansal durumumu analiz et ve önerilerini paylaş.');
                                                 router.push('/(tabs)/ai-hub');
                                             }}
                                         >
@@ -296,7 +300,7 @@ export default function DashboardScreen() {
                                                     ]}
                                                 />
                                             </View>
-                                            <Text style={styles.goalPct}>{goal.progress_pct.toFixed(0)}%</Text>
+                                            <Text style={styles.goalPct}>%{goal.progress_pct.toFixed(0)}</Text>
                                         </View>
                                     </View>
                                 ))}
@@ -329,7 +333,7 @@ export default function DashboardScreen() {
                     {/* RECENT TRANSACTIONS */}
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>Akış</Text>
+                            <Text style={styles.sectionTitle}>İşlemler</Text>
                             <TouchableOpacity onPress={() => router.push('/(tabs)/transact')}>
                                 <Text style={styles.seeAllText}>Tümü</Text>
                             </TouchableOpacity>
@@ -342,11 +346,11 @@ export default function DashboardScreen() {
                                             <Ionicons
                                                 name={tx.type === 'INCOME' ? 'arrow-down-outline' : 'arrow-up-outline'}
                                                 size={18}
-                                                color={COLORS.primary}
+                                                color={COLORS.textPrimary}
                                             />
                                         </View>
                                         <View style={styles.txInfo}>
-                                            <Text style={styles.txDesc}>{tx.description || translateCat(tx.category_name)}</Text>
+                                            <Text style={styles.txDesc}>{translateCat(tx.category_name)}</Text>
                                             <Text style={styles.txDate}>{formatDate(tx.transaction_timestamp)}</Text>
                                         </View>
                                         <Text

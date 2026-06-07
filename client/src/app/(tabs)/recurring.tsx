@@ -31,6 +31,12 @@ import { useAlert } from '../../constants/alert';
 import createStyles from '../../assets/styles/recurring.styles';
 import BottomSheetModal from '../../components/BottomSheetModal';
 import { cleanAmountInput, formatAmountDisplay } from '../../utils/format';
+import LoadingState from '../../components/tabs/LoadingState';
+import EmptyState from '../../components/tabs/EmptyState';
+import AmountInput from '../../components/tabs/AmountInput';
+import DatePickerRow from '../../components/tabs/DatePickerRow';
+import BottomSheetHeader from '../../components/tabs/BottomSheetHeader';
+import CalendarModal from '../../components/tabs/CalendarModal';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -47,7 +53,7 @@ export default function RecurringScreen() {
     const router = useRouter();
     const styles = createStyles(COLORS);
     const { showAlert, alertEl } = useAlert();
-    const { symbol, formatCurrency } = useCurrency();
+    const { symbol, formatCurrency, toBaseCurrency } = useCurrency();
 
     const [transactions, setTransactions] = useState<RecurringTransaction[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
@@ -61,6 +67,7 @@ export default function RecurringScreen() {
     const [addInterval, setAddInterval] = useState<RecurringInterval>('MONTHLY');
     const [addStartDate, setAddStartDate] = useState(new Date());
     const [addSaving, setAddSaving] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     const [detailTx, setDetailTx] = useState<RecurringTransaction | null>(null);
 
@@ -98,16 +105,10 @@ export default function RecurringScreen() {
         setAddOpen(false);
     }
 
-    function shiftDay(delta: number) {
-        const d = new Date(addStartDate);
-        d.setDate(d.getDate() + delta);
-        if (d >= new Date(new Date().setHours(0, 0, 0, 0))) {
-            setAddStartDate(d);
-        }
-    }
+
 
     async function handleSaveAdd() {
-        const parsed = parseFloat(addAmount.replace(/\./g, '').replace(',', '.'));
+        const parsed = toBaseCurrency(parseFloat(addAmount.replace(/\./g, '').replace(',', '.')));
         if (isNaN(parsed) || parsed <= 0) {
             showAlert({ title: 'Hata', message: 'Geçerli bir tutar gir.' });
             return;
@@ -166,9 +167,7 @@ export default function RecurringScreen() {
 
     const addModal = (
         <BottomSheetModal visible={addOpen} onClose={closeAdd}>
-            <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Yeni Tekrarlayan İşlem</Text>
-            </View>
+            <BottomSheetHeader title="Yeni Tekrarlayan İşlem" />
 
             <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
                 <View style={styles.typeToggle}>
@@ -176,32 +175,24 @@ export default function RecurringScreen() {
                         style={[styles.typeBtn, addType === 'EXPENSE' && styles.typeBtnActiveExpense]}
                         onPress={() => { setAddType('EXPENSE'); setAddSelectedCatId(null); }}
                     >
-                        <View style={[styles.typeDot, { backgroundColor: addType === 'EXPENSE' ? '#E53935' : COLORS.border }]} />
+                        <View style={[styles.typeDot, { backgroundColor: addType === 'EXPENSE' ? COLORS.primary : COLORS.border }]} />
                         <Text style={[styles.typeBtnText, addType === 'EXPENSE' && styles.typeBtnTextActive]}>Gider</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.typeBtn, addType === 'INCOME' && styles.typeBtnActiveIncome]}
                         onPress={() => { setAddType('INCOME'); setAddSelectedCatId(null); }}
                     >
-                        <View style={[styles.typeDot, { backgroundColor: addType === 'INCOME' ? '#2E7D32' : COLORS.border }]} />
+                        <View style={[styles.typeDot, { backgroundColor: addType === 'INCOME' ? COLORS.primary : COLORS.border }]} />
                         <Text style={[styles.typeBtnText, addType === 'INCOME' && styles.typeBtnTextActiveIncome]}>Gelir</Text>
                     </TouchableOpacity>
                 </View>
 
-                <View style={styles.amountRow}>
-                    <Text style={styles.amountSymbol}>{symbol}</Text>
-                    <TextInput
-                        style={styles.amountInput}
-                        value={addAmount}
-                        onChangeText={(t) => setAddAmount(cleanAmountInput(t))}
-                        onEndEditing={() => setAddAmount(formatAmountDisplay(addAmount))}
-                        placeholder='0,00'
-                        placeholderTextColor={COLORS.border}
-                        keyboardType='decimal-pad'
-                        returnKeyType='done'
-                        maxLength={12}
-                    />
-                </View>
+                <AmountInput
+                    symbol={symbol}
+                    value={addAmount}
+                    onChangeText={(t) => setAddAmount(cleanAmountInput(t))}
+                    onEndEditing={() => setAddAmount(formatAmountDisplay(addAmount))}
+                />
 
                 <Text style={styles.fieldLabel}>Kategori</Text>
                 <View style={styles.catGrid}>
@@ -254,17 +245,7 @@ export default function RecurringScreen() {
                 </View>
 
                 <Text style={styles.fieldLabel}>Başlangıç Tarihi</Text>
-                <View style={styles.dateRow}>
-                    <TouchableOpacity onPress={() => shiftDay(-1)} style={styles.dateArrow} disabled={isToday}>
-                        <Ionicons name='chevron-back' size={18} color={isToday ? COLORS.border : COLORS.textPrimary} />
-                    </TouchableOpacity>
-                    <Text style={styles.dateText}>
-                        {isToday ? 'Bugün' : addStartDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
-                    </Text>
-                    <TouchableOpacity onPress={() => shiftDay(1)} style={styles.dateArrow}>
-                        <Ionicons name='chevron-forward' size={18} color={COLORS.textPrimary} />
-                    </TouchableOpacity>
-                </View>
+                <DatePickerRow date={addStartDate} isToday={isToday} onPressDate={() => setCalendarOpen(true)} />
             </ScrollView>
 
             <View style={styles.saveWrap}>
@@ -365,18 +346,16 @@ export default function RecurringScreen() {
             </View>
 
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                </View>
+                <LoadingState />
             ) : (
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                     {transactions.length === 0 ? (
-                        <View style={styles.emptyCard}>
-                            <Ionicons name="repeat-outline" size={48} color={COLORS.textSecondary} />
-                            <Text style={styles.emptyTitle}>Kayıt Yok</Text>
-                            <Text style={styles.emptyHint}>
-                                Düzenli faturalarınızı veya gelirlerinizi buraya ekleyerek otomatik işlenmesini sağlayabilirsiniz.
-                            </Text>
+                        <View style={{ flex: 1, marginTop: 40 }}>
+                            <EmptyState 
+                                icon="repeat-outline"
+                                title="Kayıt Yok"
+                                hint="Düzenli faturalarınızı veya gelirlerinizi buraya ekleyerek otomatik işlenmesini sağlayabilirsiniz."
+                            />
                         </View>
                     ) : (
                         transactions.map(item => {
@@ -393,8 +372,8 @@ export default function RecurringScreen() {
                                 >
                                     <View style={styles.recCardContent}>
                                         <View style={styles.recInfo}>
-                                            <View style={[styles.recIconBox, item.type === 'INCOME' ? styles.recIconIncome : styles.recIconExpense]}>
-                                                <Ionicons name={meta.icon} size={20} color={COLORS.white} />
+                                            <View style={styles.recIconBox}>
+                                                <Ionicons name={meta.icon} size={22} color={COLORS.textPrimary} />
                                             </View>
                                             <View style={styles.recTextWrap}>
                                                 <Text style={styles.recDesc} numberOfLines={1}>{item.description || meta.tr}</Text>
@@ -431,6 +410,12 @@ export default function RecurringScreen() {
 
             {addModal}
             {detailModal}
+            <CalendarModal
+                visible={calendarOpen}
+                onClose={() => setCalendarOpen(false)}
+                date={addStartDate}
+                onSelectDate={setAddStartDate}
+            />
             {alertEl}
         </SafeAreaView>
     );

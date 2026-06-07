@@ -186,10 +186,10 @@ const createStyles = (COLORS: any) =>
             color: COLORS.textSecondary,
         },
         typeBtnTextActive: {
-            color: '#E53935',
+            color: COLORS.primary,
         },
         typeBtnTextActiveIncome: {
-            color: '#2E7D32',
+            color: COLORS.primary,
         },
         amountRow: {
             flexDirection: 'row',
@@ -319,13 +319,13 @@ const createStyles = (COLORS: any) =>
             alignItems: 'center',
             justifyContent: 'space-between',
             paddingHorizontal: 20,
-            paddingVertical: 14,
+            paddingTop: 20,
+            paddingBottom: 12,
         },
         detailCloseBtn: {
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: COLORS.surfaceContainerLow,
+            padding: 8,
+            marginLeft: -8,
+            marginTop: -8,
             alignItems: 'center',
             justifyContent: 'center',
         },

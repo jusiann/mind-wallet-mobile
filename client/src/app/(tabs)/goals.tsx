@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -18,10 +18,16 @@ import { Goal, createGoal, deleteGoalById, getGoals } from '../../store/goals';
 import { Pledge, fetchPledges } from '../../store/pledges';
 import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
-import { pendingMessage } from '../../store/engine';
+import { useEngineStore } from '../../store/useEngineStore';
 import createStyles from '../../assets/styles/goals.styles';
 import { useCurrency } from '../../hooks/useCurrency';
 import BottomSheetModal from '../../components/BottomSheetModal';
+import LoadingState from '../../components/tabs/LoadingState';
+import ErrorState from '../../components/tabs/ErrorState';
+import EmptyState from '../../components/tabs/EmptyState';
+import GoalCard from '../../components/tabs/GoalCard';
+import AmountInput from '../../components/tabs/AmountInput';
+import BottomSheetHeader from '../../components/tabs/BottomSheetHeader';
 
 function cleanAmountInput(raw: string): string {
     const cleaned = raw.replace(/[^0-9,]/g, '');
@@ -73,7 +79,7 @@ export default function GoalsScreen() {
     const navigation = useNavigation();
     const styles = createStyles(COLORS);
     const { showAlert, alertEl } = useAlert();
-    const { symbol, formatCurrency } = useCurrency();
+    const { symbol, formatCurrency, toBaseCurrency } = useCurrency();
 
     const [goals, setGoals] = useState<Goal[]>([]);
     const [loading, setLoading] = useState(true);
@@ -103,21 +109,27 @@ export default function GoalsScreen() {
         });
     }, [navigation]);
 
+    const isLoaded = useRef(false);
     useFocusEffect(
         useCallback(() => {
-            loadGoals(true);
-            getDashboard().then((res) => {
-                if (res.success) setAiInsight(res.data!.ai_insight);
-            });
-            fetchPledges('PENDING').then((res) => {
-                if (res.success) {
-                    const map: Record<number, number> = {};
-                    for (const p of res.data ?? []) {
-                        map[p.goal_id] = (map[p.goal_id] ?? 0) + Number(p.amount);
+            const shouldRefresh = useEngineStore.getState().consumeRefresh();
+            
+            if (shouldRefresh || !isLoaded.current) {
+                isLoaded.current = true;
+                loadGoals(true);
+                getDashboard().then((res) => {
+                    if (res.success) setAiInsight(res.data!.ai_insight);
+                });
+                fetchPledges('PENDING').then((res) => {
+                    if (res.success) {
+                        const map: Record<number, number> = {};
+                        for (const p of res.data ?? []) {
+                            map[p.goal_id] = (map[p.goal_id] ?? 0) + Number(p.amount);
+                        }
+                        setPendingPledgesByGoal(map);
                     }
-                    setPendingPledgesByGoal(map);
-                }
-            });
+                });
+            }
         }, []),
     );
 
@@ -147,7 +159,7 @@ export default function GoalsScreen() {
 
     async function handleSaveAdd() {
         const trimmedTitle = addTitle.trim();
-        const amount = parseFloat(addTargetAmount.replace(/\./g, '').replace(',', '.'));
+        const amount = toBaseCurrency(parseFloat(addTargetAmount.replace(/\./g, '').replace(',', '.')));
         if (!trimmedTitle) { setAddFormError('Hedef adı gerekli.'); return; }
         if (isNaN(amount) || amount <= 0) { setAddFormError('Geçerli bir tutar girin.'); return; }
         setAddSaving(true);
@@ -189,7 +201,7 @@ export default function GoalsScreen() {
     }
 
     function handleAiAction() {
-        pendingMessage.set('Harcamalarımı analiz et ve tasarruf önerileri ver');
+        useEngineStore.getState().setPendingChat('Harcamalarımı analiz et ve tasarruf önerileri ver');
         router.push('/(tabs)/ai-hub');
     }
 
@@ -278,9 +290,7 @@ export default function GoalsScreen() {
 
     const addModal = (
         <BottomSheetModal visible={addOpen} onClose={closeAdd}>
-            <View style={styles.addHeader}>
-                <Text style={styles.addHeaderTitle}>Yeni Hedef</Text>
-            </View>
+            <BottomSheetHeader title="Yeni Hedef" />
 
             <ScrollView contentContainerStyle={styles.addContent} keyboardShouldPersistTaps='handled'>
                 <Text style={styles.addFieldLabel}>Hedef Adı</Text>
@@ -294,20 +304,12 @@ export default function GoalsScreen() {
                 />
 
                 <Text style={styles.addFieldLabel}>Hedef Tutarı</Text>
-                <View style={styles.addAmountRow}>
-                    <Text style={styles.addAmountSymbol}>{symbol}</Text>
-                    <TextInput
-                        style={styles.addAmountInput}
-                        value={addTargetAmount}
-                        onChangeText={(t) => setAddTargetAmount(cleanAmountInput(t))}
-                        onEndEditing={() => setAddTargetAmount(formatAmountDisplay(addTargetAmount))}
-                        placeholder='0'
-                        placeholderTextColor={COLORS.border}
-                        keyboardType='decimal-pad'
-                        returnKeyType='done'
-                        maxLength={14}
-                    />
-                </View>
+                <AmountInput
+                    symbol={symbol}
+                    value={addTargetAmount}
+                    onChangeText={(t) => setAddTargetAmount(cleanAmountInput(t))}
+                    onEndEditing={() => setAddTargetAmount(formatAmountDisplay(addTargetAmount))}
+                />
 
                 <Text style={styles.addFieldLabel}>Hedef Tarihi</Text>
                 <View style={styles.addDateRow}>
@@ -345,13 +347,9 @@ export default function GoalsScreen() {
     return (
         <SafeAreaView style={styles.safe} edges={[]}>
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size='large' color={COLORS.primary} />
-                </View>
+                <LoadingState />
             ) : error ? (
-                <View style={styles.center}>
-                    <Text style={styles.errorText}>{error}</Text>
-                </View>
+                <ErrorState error={error} />
             ) : (
                 <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
                     {/* AI CARD */}
@@ -375,72 +373,23 @@ export default function GoalsScreen() {
 
                     {/* GOALS */}
                     {goals.length === 0 ? (
-                        <View style={styles.emptyCard}>
-                            <Ionicons name='flag-outline' size={40} color={COLORS.textSecondary} />
-                            <Text style={styles.emptyTitle}>Henüz hedef yok</Text>
-                            <Text style={styles.emptyHint}>
-                                Yeni hedef ekleyerek veya Mindy ile konuşarak başlayabilirsin.
-                            </Text>
+                        <View style={{ flex: 1, marginTop: 40 }}>
+                            <EmptyState 
+                                icon="flag-outline"
+                                title="Henüz hedef yok"
+                                hint="Yeni hedef ekleyerek veya Mindy ile konuşarak başlayabilirsin."
+                            />
                         </View>
                     ) : (
                         goals.map((goal) => {
-                            const pct = Math.min(Number(goal.progress_pct), 100);
-                            const isCompleted = goal.status === 'COMPLETED';
-                            const isExpired = isGoalExpired(goal);
                             const pendingPledge = pendingPledgesByGoal[goal.id] ?? 0;
                             return (
-                                <TouchableOpacity
+                                <GoalCard
                                     key={goal.id}
-                                    style={styles.goalCard}
+                                    goal={goal}
                                     onPress={() => setDetailGoal(goal)}
-                                    activeOpacity={0.85}
-                                >
-                                    <View style={styles.goalTop}>
-                                        <View style={[styles.goalIconBox, isCompleted && styles.goalIconBoxCompleted, isExpired && styles.goalIconBoxExpired]}>
-                                            <Ionicons name='flag' size={15} color={COLORS.white} />
-                                        </View>
-                                        <Text style={styles.goalTitle} numberOfLines={1}>{goal.title}</Text>
-                                        {isExpired && (
-                                            <View style={styles.expiredBadge}>
-                                                <Text style={styles.expiredBadgeText}>Süre Doldu</Text>
-                                            </View>
-                                        )}
-                                        {pendingPledge > 0 && (
-                                            <View style={{ backgroundColor: COLORS.primaryContainer, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 6 }}>
-                                                <Text style={{ color: COLORS.primary, fontSize: 11, fontFamily: 'HankenGrotesk_500Medium' }}>
-                                                    +{formatCurrency(Number(pendingPledge))} söz
-                                                </Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                    <Text style={[styles.deadlineText, isExpired && styles.deadlineTextExpired]}>
-                                        Son tarih:{' '}
-                                        {new Date(goal.deadline).toLocaleDateString('tr-TR', {
-                                            day: 'numeric',
-                                            month: 'short',
-                                            year: 'numeric',
-                                        })}
-                                    </Text>
-                                    <View style={styles.amountRow}>
-                                        <View style={styles.amountLeft}>
-                                            <Text style={styles.currentAmount}>{formatCurrency(goal.current_amount)}</Text>
-                                            <Text style={styles.targetAmount}> / {formatCurrency(goal.target_amount)}</Text>
-                                        </View>
-                                        <Text style={[styles.pctText, isCompleted && styles.pctTextCompleted, isExpired && styles.pctTextExpired]}>
-                                            %{pct.toFixed(0)}
-                                        </Text>
-                                    </View>
-                                    <View style={styles.progressTrack}>
-                                        <View
-                                            style={[
-                                                styles.progressFill,
-                                                { width: `${pct}%` as any },
-                                                isCompleted && styles.progressFillCompleted,
-                                                isExpired && styles.progressFillExpired,
-                                            ]}
-                                        />
-                                    </View>
-                                </TouchableOpacity>
+                                    pendingPledgeAmount={pendingPledge}
+                                />
                             );
                         })
                     )}

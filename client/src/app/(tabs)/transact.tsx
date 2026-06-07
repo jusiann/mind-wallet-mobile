@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -31,6 +31,15 @@ import createStyles from '../../assets/styles/transact.styles';
 import { useCurrency } from '../../hooks/useCurrency';
 import BottomSheetModal from '../../components/BottomSheetModal';
 import { cleanAmountInput, formatAmountDisplay } from '../../utils/format';
+import { useEngineStore } from '../../store/useEngineStore';
+import TransactionRow from '../../components/tabs/TransactionRow';
+import LoadingState from '../../components/tabs/LoadingState';
+import EmptyState from '../../components/tabs/EmptyState';
+import QuickActionCard from '../../components/tabs/QuickActionCard';
+import AmountInput from '../../components/tabs/AmountInput';
+import DatePickerRow from '../../components/tabs/DatePickerRow';
+import BottomSheetHeader from '../../components/tabs/BottomSheetHeader';
+import CalendarModal from '../../components/tabs/CalendarModal';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -83,7 +92,7 @@ export default function TransactScreen() {
     const [exporting, setExporting] = useState(false);
     const [exportOpen, setExportOpen] = useState(false);
     const [exportDate, setExportDate] = useState(new Date());
-    const { symbol, formatCurrency } = useCurrency();
+    const { symbol, formatCurrency, toBaseCurrency } = useCurrency();
 
     const [addOpen, setAddOpen] = useState(false);
     const [initialType, setInitialType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
@@ -93,6 +102,7 @@ export default function TransactScreen() {
     const [addDescription, setAddDescription] = useState('');
     const [addTxDate, setAddTxDate] = useState(new Date());
     const [addSaving, setAddSaving] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
 
     const [detailTx, setDetailTx] = useState<Enriched | null>(null);
 
@@ -149,7 +159,14 @@ export default function TransactScreen() {
         setLoading(false);
     }, []);
 
-    useFocusEffect(useCallback(() => { load(); }, [load]));
+    const isLoaded = useRef(false);
+    useFocusEffect(useCallback(() => { 
+        const shouldRefresh = useEngineStore.getState().consumeRefresh();
+        if (shouldRefresh || !isLoaded.current) {
+            isLoaded.current = true;
+            load(); 
+        }
+    }, [load]));
 
     function shiftExportMonth(delta: number) {
         const d = new Date(exportDate);
@@ -200,14 +217,10 @@ export default function TransactScreen() {
         setAddOpen(false);
     }
 
-    function shiftDay(delta: number) {
-        const d = new Date(addTxDate);
-        d.setDate(d.getDate() + delta);
-        if (d <= new Date()) setAddTxDate(d);
-    }
+
 
     async function saveAdd() {
-        const parsed = parseFloat(addAmount.replace(/\./g, '').replace(',', '.'));
+        const parsed = toBaseCurrency(parseFloat(addAmount.replace(/\./g, '').replace(',', '.')));
         if (isNaN(parsed) || parsed <= 0) {
             showAlert({ title: 'Hata', message: 'Geçerli bir tutar gir.' });
             return;
@@ -244,9 +257,7 @@ export default function TransactScreen() {
 
     const addModal = (
         <BottomSheetModal visible={addOpen} onClose={closeAdd}>
-            <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Yeni İşlem</Text>
-            </View>
+            <BottomSheetHeader title="Yeni İşlem" />
 
             <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
                 {/* TYPE TOGGLE */}
@@ -255,33 +266,25 @@ export default function TransactScreen() {
                         style={[styles.typeBtn, addType === 'EXPENSE' && styles.typeBtnActiveExpense]}
                         onPress={() => { setAddType('EXPENSE'); setAddSelectedCatId(null); }}
                     >
-                        <View style={[styles.typeDot, { backgroundColor: addType === 'EXPENSE' ? '#E53935' : COLORS.border }]} />
+                        <View style={[styles.typeDot, { backgroundColor: addType === 'EXPENSE' ? COLORS.primary : COLORS.border }]} />
                         <Text style={[styles.typeBtnText, addType === 'EXPENSE' && styles.typeBtnTextActive]}>Gider</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.typeBtn, addType === 'INCOME' && styles.typeBtnActiveIncome]}
                         onPress={() => { setAddType('INCOME'); setAddSelectedCatId(null); }}
                     >
-                        <View style={[styles.typeDot, { backgroundColor: addType === 'INCOME' ? '#2E7D32' : COLORS.border }]} />
+                        <View style={[styles.typeDot, { backgroundColor: addType === 'INCOME' ? COLORS.primary : COLORS.border }]} />
                         <Text style={[styles.typeBtnText, addType === 'INCOME' && styles.typeBtnTextActiveIncome]}>Gelir</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* AMOUNT */}
-                <View style={styles.amountRow}>
-                    <Text style={styles.amountSymbol}>{symbol}</Text>
-                    <TextInput
-                        style={styles.amountInput}
-                        value={addAmount}
-                        onChangeText={(t) => setAddAmount(cleanAmountInput(t))}
-                        onEndEditing={() => setAddAmount(formatAmountDisplay(addAmount))}
-                        placeholder='0,00'
-                        placeholderTextColor={COLORS.border}
-                        keyboardType='decimal-pad'
-                        returnKeyType='done'
-                        maxLength={12}
-                    />
-                </View>
+                <AmountInput
+                    symbol={symbol}
+                    value={addAmount}
+                    onChangeText={(t) => setAddAmount(cleanAmountInput(t))}
+                    onEndEditing={() => setAddAmount(formatAmountDisplay(addAmount))}
+                />
 
                 {/* CATEGORY */}
                 <Text style={styles.fieldLabel}>Kategori</Text>
@@ -322,23 +325,7 @@ export default function TransactScreen() {
 
                 {/* DATE */}
                 <Text style={styles.fieldLabel}>Tarih</Text>
-                <View style={styles.dateRow}>
-                    <TouchableOpacity onPress={() => shiftDay(-1)} style={styles.dateArrow}>
-                        <Ionicons name='chevron-back' size={18} color={COLORS.textPrimary} />
-                    </TouchableOpacity>
-                    <Text style={styles.dateText}>
-                        {isToday
-                            ? 'Bugün'
-                            : addTxDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' })}
-                    </Text>
-                    <TouchableOpacity onPress={() => shiftDay(1)} style={styles.dateArrow} disabled={isToday}>
-                        <Ionicons
-                            name='chevron-forward'
-                            size={18}
-                            color={isToday ? COLORS.border : COLORS.textPrimary}
-                        />
-                    </TouchableOpacity>
-                </View>
+                <DatePickerRow date={addTxDate} isToday={isToday} onPressDate={() => setCalendarOpen(true)} />
             </ScrollView>
 
             <View style={styles.saveWrap}>
@@ -415,9 +402,7 @@ export default function TransactScreen() {
 
     const exportBottomSheet = (
         <BottomSheetModal visible={exportOpen} onClose={() => setExportOpen(false)}>
-            <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Dışa Aktar - Excel</Text>
-            </View>
+            <BottomSheetHeader title="Dışa Aktar - Excel" />
             <View style={{ padding: 20, gap: 16 }}>
                 <Text style={styles.fieldLabel}>Dışa aktarılacak dönemi seçin:</Text>
 
@@ -461,35 +446,19 @@ export default function TransactScreen() {
     return (
         <SafeAreaView style={styles.safe} edges={[]}>
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size='large' color={COLORS.primary} />
-                </View>
+                <LoadingState />
             ) : sections.length === 0 ? (
                 <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
                     <View style={styles.quickActionsRow}>
-                        <TouchableOpacity
-                            style={styles.quickActionCard}
-                            onPress={() => router.push('/report' as any)}
-                        >
-                            <View style={styles.quickActionIconCircle}>
-                                <Ionicons name='bar-chart-outline' size={22} color={COLORS.white} />
-                            </View>
-                            <Text style={styles.quickActionLabel}>Aylık Rapor</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.quickActionCard}
-                            onPress={() => router.push('/recurring' as any)}
-                        >
-                            <View style={styles.quickActionIconCircle}>
-                                <Ionicons name='repeat-outline' size={22} color={COLORS.white} />
-                            </View>
-                            <Text style={styles.quickActionLabel}>Otom. İşlemler</Text>
-                        </TouchableOpacity>
+                        <QuickActionCard title="Aylık Rapor" icon="bar-chart-outline" onPress={() => router.push('/report' as any)} />
+                        <QuickActionCard title="Otom. İşlemler" icon="repeat-outline" onPress={() => router.push('/recurring' as any)} />
                     </View>
-                    <View style={[styles.center, { flex: 1 }]}>
-                        <Ionicons name='receipt-outline' size={48} color={COLORS.border} />
-                        <Text style={styles.emptyText}>Henüz işlem yok.</Text>
-                        <Text style={styles.emptySubText}>+ butonuna basarak işlem ekleyebilirsin.</Text>
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                        <EmptyState 
+                            icon="receipt-outline" 
+                            title="Henüz işlem yok." 
+                            hint="+ butonuna basarak işlem ekleyebilirsin." 
+                        />
                     </View>
                 </ScrollView>
             ) : (
@@ -501,59 +470,15 @@ export default function TransactScreen() {
                     stickySectionHeadersEnabled={false}
                     ListHeaderComponent={
                         <View style={styles.quickActionsRow}>
-                            <TouchableOpacity
-                                style={styles.quickActionCard}
-                                onPress={() => router.push('/report' as any)}
-                            >
-                                <View style={styles.quickActionIconCircle}>
-                                    <Ionicons name='bar-chart-outline' size={22} color={COLORS.white} />
-                                </View>
-                                <Text style={styles.quickActionLabel}>Aylık Rapor</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.quickActionCard}
-                                onPress={() => router.push('/recurring' as any)}
-                            >
-                                <View style={styles.quickActionIconCircle}>
-                                    <Ionicons name='repeat-outline' size={22} color={COLORS.white} />
-                                </View>
-                                <Text style={styles.quickActionLabel}>Otom. İşlemler</Text>
-                            </TouchableOpacity>
+                            <QuickActionCard title="Aylık Rapor" icon="bar-chart-outline" onPress={() => router.push('/report' as any)} />
+                            <QuickActionCard title="Otom. İşlemler" icon="repeat-outline" onPress={() => router.push('/recurring' as any)} />
                         </View>
                     }
                     renderSectionHeader={({ section }) => (
                         <Text style={styles.sectionHeader}>{section.title}</Text>
                     )}
                     renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={styles.txRow}
-                            onPress={() => setDetailTx(item)}
-                            activeOpacity={0.7}
-                        >
-                            <View style={[styles.txIcon, item.type === 'INCOME' && styles.txIconIncome]}>
-                                <Ionicons
-                                    name={item.catMeta.icon}
-                                    size={18}
-                                    color={COLORS.primary}
-                                />
-                            </View>
-                            <View style={styles.txInfo}>
-                                <Text style={styles.txDesc} numberOfLines={1}>
-                                    {item.description ?? item.catMeta.tr}
-                                </Text>
-                                <Text style={styles.txMeta}>
-                                    {item.catMeta.tr} · {formatTime(item.transaction_timestamp)}
-                                </Text>
-                            </View>
-                            <Text
-                                style={[
-                                    styles.txAmount,
-                                    item.type === 'INCOME' ? styles.amountIncome : styles.amountExpense,
-                                ]}
-                            >
-                                {item.type === 'INCOME' ? '+' : '-'}{formatCurrency(parseFloat(String(item.amount)))}
-                            </Text>
-                        </TouchableOpacity>
+                        <TransactionRow tx={item} meta={item.catMeta} onPress={() => setDetailTx(item)} />
                     )}
                 />
             )}
@@ -561,6 +486,12 @@ export default function TransactScreen() {
             {addModal}
             {exportBottomSheet}
             {detailModal}
+            <CalendarModal
+                visible={calendarOpen}
+                onClose={() => setCalendarOpen(false)}
+                date={addTxDate}
+                onSelectDate={setAddTxDate}
+            />
             {alertEl}
         </SafeAreaView>
     );

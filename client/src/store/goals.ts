@@ -11,6 +11,10 @@ export interface Goal {
     progress_pct: number;
 }
 
+export const isGoalExpired = (goal: Goal) => {
+    return new Date(goal.deadline) < new Date(new Date().setHours(0, 0, 0, 0)) && goal.status !== 'COMPLETED';
+};
+
 export async function getGoals(status?: string): Promise<{ success: boolean; data?: Goal[]; message?: string }> {
     try {
         const query = status ? `?status=${encodeURIComponent(status)}` : '';
