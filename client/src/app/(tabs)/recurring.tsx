@@ -37,6 +37,7 @@ import AmountInput from '../../components/tabs/AmountInput';
 import DatePickerRow from '../../components/tabs/DatePickerRow';
 import BottomSheetHeader from '../../components/tabs/BottomSheetHeader';
 import CalendarModal from '../../components/tabs/CalendarModal';
+import { useEngineStore } from '../../store/useEngineStore';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -123,6 +124,7 @@ export default function RecurringScreen() {
             start_date: addStartDate.toISOString().split('T')[0],
         });
         if (res.success) {
+            useEngineStore.getState().markNeedsRefresh();
             closeAdd();
             loadData();
         } else {
@@ -153,6 +155,7 @@ export default function RecurringScreen() {
                 onPress: async () => {
                     const res = await deleteRecurringTransaction(id);
                     if (res.success) {
+                        useEngineStore.getState().markNeedsRefresh();
                         setDetailTx(null);
                         loadData();
                     } else {
@@ -169,7 +172,7 @@ export default function RecurringScreen() {
         <BottomSheetModal visible={addOpen} onClose={closeAdd}>
             <BottomSheetHeader title="Yeni Tekrarlayan İşlem" />
 
-            <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
+            <ScrollView contentContainerStyle={[styles.modalContent, { paddingBottom: 40 }]} keyboardShouldPersistTaps='handled' automaticallyAdjustKeyboardInsets>
                 <View style={styles.typeToggle}>
                     <TouchableOpacity
                         style={[styles.typeBtn, addType === 'EXPENSE' && styles.typeBtnActiveExpense]}

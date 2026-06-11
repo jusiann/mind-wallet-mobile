@@ -194,6 +194,7 @@ export default function TransactScreen() {
                 onPress: async () => {
                     const res = await deleteTransaction(id);
                     if (res.success) {
+                        useEngineStore.getState().markNeedsRefresh();
                         setDetailTx(null);
                         load();
                     } else {
@@ -237,6 +238,7 @@ export default function TransactScreen() {
         });
         if (res.success) {
             resetAddForm();
+            useEngineStore.getState().markNeedsRefresh();
             if (res.data!.warning) {
                 showAlert({
                     title: 'Uyarı',
@@ -259,7 +261,7 @@ export default function TransactScreen() {
         <BottomSheetModal visible={addOpen} onClose={closeAdd}>
             <BottomSheetHeader title="Yeni İşlem" />
 
-            <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps='handled'>
+            <ScrollView contentContainerStyle={[styles.modalContent, { paddingBottom: 40 }]} keyboardShouldPersistTaps='handled' automaticallyAdjustKeyboardInsets>
                 {/* TYPE TOGGLE */}
                 <View style={styles.typeToggle}>
                     <TouchableOpacity

@@ -173,6 +173,7 @@ export default function GoalsScreen() {
         if (res.success) {
             resetAdd();
             setAddOpen(false);
+            useEngineStore.getState().markNeedsRefresh();
             loadGoals();
         } else {
             setAddFormError(res.message ?? 'Hedef oluşturulamadı.');
@@ -190,6 +191,7 @@ export default function GoalsScreen() {
                 onPress: async () => {
                     const res = await deleteGoalById(goal.id);
                     if (res.success) {
+                        useEngineStore.getState().markNeedsRefresh();
                         setDetailGoal(null);
                         loadGoals();
                     } else {
@@ -292,7 +294,7 @@ export default function GoalsScreen() {
         <BottomSheetModal visible={addOpen} onClose={closeAdd}>
             <BottomSheetHeader title="Yeni Hedef" />
 
-            <ScrollView contentContainerStyle={styles.addContent} keyboardShouldPersistTaps='handled'>
+            <ScrollView contentContainerStyle={[styles.addContent, { paddingBottom: 40 }]} keyboardShouldPersistTaps='handled' automaticallyAdjustKeyboardInsets>
                 <Text style={styles.addFieldLabel}>Hedef Adı</Text>
                 <TextInput
                     style={styles.addTextInput}

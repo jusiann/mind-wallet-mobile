@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Animated,
+    Keyboard,
     Modal,
     PanResponder,
+    Platform,
     StyleSheet,
     TouchableWithoutFeedback,
     View,
-    KeyboardAvoidingView,
-    Platform,
     Dimensions,
 } from 'react-native';
 import { COLORS } from '../constants/theme';
@@ -42,6 +42,8 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
                 }),
             ]).start();
         } else {
+            Keyboard.dismiss();
+
             Animated.parallel([
                 Animated.timing(fadeAnim, {
                     toValue: 0,
@@ -61,8 +63,8 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
 
     const panResponder = useRef(
         PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 5,
+            onStartShouldSetPanResponder: () => false,
+            onMoveShouldSetPanResponder: (_, gs) => gs.dy > 8,
             onPanResponderMove: (_, gs) => {
                 if (gs.dy > 0) translateY.setValue(gs.dy);
             },
@@ -84,17 +86,19 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
 
     return (
         <Modal visible={renderVisible} transparent animationType="none" onRequestClose={onClose}>
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={styles.container}
-            >
-                {/* Dim backdrop - tap to close */}
-                <TouchableWithoutFeedback onPress={onClose}>
+            <View style={styles.container}>
+                {/* Dim backdrop - tap to dismiss keyboard first, then close */}
+                <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); onClose(); }}>
                     <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
                 </TouchableWithoutFeedback>
 
-                {/* Floating card - has margins so it doesn't touch screen edges */}
-                <Animated.View style={[styles.sheet, { transform: [{ translateY }] }]}>
+                {/* Floating card - stays in place, keyboard overlaps bottom */}
+                <Animated.View
+                    style={[
+                        styles.sheet,
+                        { transform: [{ translateY }] },
+                    ]}
+                >
                     {/* Handle bar */}
                     <View style={styles.handleContainer} {...panResponder.panHandlers}>
                         <View style={styles.handle} />
@@ -105,7 +109,7 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
                         {children}
                     </View>
                 </Animated.View>
-            </KeyboardAvoidingView>
+            </View>
         </Modal>
     );
 }
@@ -120,11 +124,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.55)',
     },
     sheet: {
-        // Side margins so it floats and doesn't touch screen edges
         marginHorizontal: 12,
         marginBottom: Platform.OS === 'ios' ? 32 : 20,
         backgroundColor: COLORS.background,
-        // All four corners rounded for the floating card effect
         borderRadius: 28,
         maxHeight: '88%',
         shadowColor: '#000',
@@ -150,7 +152,6 @@ const styles = StyleSheet.create({
     content: {
         flexGrow: 1,
         flexShrink: 1,
-        // Needed so ScrollView inside can measure its height
         overflow: 'hidden',
     },
 });
