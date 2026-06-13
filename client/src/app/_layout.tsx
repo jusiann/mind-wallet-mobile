@@ -5,12 +5,14 @@ import {
     HankenGrotesk_700Bold,
     useFonts,
 } from '@expo-google-fonts/hanken-grotesk';
-import { SplashScreen, Stack } from 'expo-router';
+import { SplashScreen, Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { clearTokens, getAccessToken, getAuthState, getMe, setAuthState, setUserName, subscribeAuthState, tryRefreshToken } from '../store/auth';
 import { getOnboardingCompleted, loadOnboardingState, subscribeOnboarding } from '../store/onboarding';
 import { COLORS } from '../constants/theme';
 import { fetchExchangeRates } from '../constants/currency';
+
+export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,73 +26,80 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
 
     useEffect(() => {
         if (!loaded && !error) return;
+
+        let cancelled = false;
+
         (async () => {
             try {
-                // Fetch live exchange rates
-                fetchExchangeRates().catch(err => console.error('Error fetching exchange rates:', err));
-                
+                fetchExchangeRates().catch(() => {});
+
                 const refreshState = await tryRefreshToken();
                 if (!refreshState.authenticated) {
                     await clearTokens();
-                } else {
-                    // authenticated but if we need pin verification, it's already set in state
-                    if (!refreshState.needsPin && !refreshState.needsPinSetup) {
-                        const token = await getAccessToken();
-                        if (token) {
-                            const res = await getMe();
-                            setUserName(res.name);
-                            setAuthState(true, false, !res.has_pin);
-                        }
+                } else if (!refreshState.needsPin && !refreshState.needsPinSetup) {
+                    const token = await getAccessToken();
+                    if (token) {
+                        const res = await getMe();
+                        setUserName(res.name);
+                        setAuthState(true, false, !res.has_pin);
                     }
                 }
             } catch {
                 await clearTokens();
             }
+
             await loadOnboardingState();
-            onReady();
-            SplashScreen.hideAsync();
+
+            if (!cancelled) {
+                onReady();
+                SplashScreen.hideAsync();
+            }
         })();
+
+        return () => { cancelled = true; };
     }, [loaded, error]);
 
     return null;
 }
 
 function RootNavigator() {
-    const [{ authenticated, needsPin, needsPinSetup }, setAuthState] = useState(getAuthState());
+    const [authState, setAuth] = useState(getAuthState());
     const [onboardingDone, setOnboardingDone] = useState(getOnboardingCompleted());
+    const router = useRouter();
+    const segments = useSegments();
 
-    useEffect(() => subscribeAuthState(setAuthState), []);
+    useEffect(() => subscribeAuthState(setAuth), []);
     useEffect(() => subscribeOnboarding(setOnboardingDone), []);
 
+    const { authenticated, needsPin, needsPinSetup } = authState;
     const isFullyAuthed = authenticated && !needsPin && !needsPinSetup;
+
+    useEffect(() => {
+        const inAuthGroup = segments[0] === '(auth)';
+        const inTabsGroup = segments[0] === '(tabs)';
+
+        if (!authenticated && !inAuthGroup) {
+            // Not logged in → send to login
+            router.replace('/(auth)/login');
+        } else if (authenticated && needsPinSetup) {
+            router.replace('/pin-setup');
+        } else if (authenticated && needsPin) {
+            router.replace('/pin-entry');
+        } else if (isFullyAuthed && !onboardingDone) {
+            router.replace('/onboarding');
+        } else if (isFullyAuthed && onboardingDone && !inTabsGroup) {
+            router.replace('/(tabs)');
+        }
+    }, [authenticated, needsPin, needsPinSetup, onboardingDone, segments]);
 
     return (
         <Stack screenOptions={{ headerShown: false }}>
-            {/* PROTECTED ROUTES */}
-            <Stack.Protected guard={isFullyAuthed && onboardingDone}>
-                <Stack.Screen name="(tabs)" />
-            </Stack.Protected>
-
-            {/* ONBOARDING */}
-            <Stack.Protected guard={isFullyAuthed && !onboardingDone}>
-                <Stack.Screen name="onboarding" />
-            </Stack.Protected>
-
-            {/* PIN VERIFICATION */}
-            <Stack.Protected guard={authenticated && needsPin}>
-                <Stack.Screen name="pin-entry" options={{ headerShown: false }} />
-            </Stack.Protected>
-
-            {/* PIN SETUP */}
-            <Stack.Protected guard={authenticated && needsPinSetup}>
-                <Stack.Screen name="pin-setup" options={{ headerShown: false }} />
-            </Stack.Protected>
-
-            {/* PUBLIC ROUTES */}
-            <Stack.Protected guard={!authenticated}>
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="index" />
-            </Stack.Protected>
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="onboarding" />
+            <Stack.Screen name="pin-entry" />
+            <Stack.Screen name="pin-setup" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Screen name="index" />
         </Stack>
     );
 }

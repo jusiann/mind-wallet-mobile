@@ -71,7 +71,7 @@ export default function DashboardScreen() {
     useEffect(() => {
         navigation.setOptions({
             headerRight: () => (
-                <TouchableOpacity onPress={() => router.push('/profile')} style={styles.headerAvatar}>
+                <TouchableOpacity onPress={() => router.push('/(tabs)/profile' as any)} style={styles.headerAvatar}>
                     <Text style={styles.headerAvatarText}>{initials}</Text>
                 </TouchableOpacity>
             ),

@@ -81,6 +81,12 @@ function buildSections(transactions: Transaction[], cats: Category[]): Section[]
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key)!.push(tx);
     }
+    // Sort transactions within each section: newest first
+    for (const data of groups.values()) {
+        data.sort((a, b) =>
+            new Date(b.transaction_timestamp).getTime() - new Date(a.transaction_timestamp).getTime()
+        );
+    }
     return Array.from(groups.entries()).map(([title, data]) => ({ title, data }));
 }
 
@@ -452,8 +458,8 @@ export default function TransactScreen() {
             ) : sections.length === 0 ? (
                 <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20 }}>
                     <View style={styles.quickActionsRow}>
-                        <QuickActionCard title="Aylık Rapor" icon="bar-chart-outline" onPress={() => router.push('/report' as any)} />
-                        <QuickActionCard title="Otom. İşlemler" icon="repeat-outline" onPress={() => router.push('/recurring' as any)} />
+                        <QuickActionCard title="Aylık Rapor" icon="bar-chart-outline" onPress={() => router.push('/(tabs)/report' as any)} />
+                        <QuickActionCard title="Otom. İşlemler" icon="repeat-outline" onPress={() => router.push('/(tabs)/recurring' as any)} />
                     </View>
                     <View style={{ flex: 1, justifyContent: 'center' }}>
                         <EmptyState 
@@ -472,8 +478,8 @@ export default function TransactScreen() {
                     stickySectionHeadersEnabled={false}
                     ListHeaderComponent={
                         <View style={styles.quickActionsRow}>
-                            <QuickActionCard title="Aylık Rapor" icon="bar-chart-outline" onPress={() => router.push('/report' as any)} />
-                            <QuickActionCard title="Otom. İşlemler" icon="repeat-outline" onPress={() => router.push('/recurring' as any)} />
+                            <QuickActionCard title="Aylık Rapor" icon="bar-chart-outline" onPress={() => router.push('/(tabs)/report' as any)} />
+                            <QuickActionCard title="Otom. İşlemler" icon="repeat-outline" onPress={() => router.push('/(tabs)/recurring' as any)} />
                         </View>
                     }
                     renderSectionHeader={({ section }) => (
