@@ -4,12 +4,41 @@ import { createTransactionRecord } from './transaction.controller.js';
 import { createGoalRecord } from './goals.controller.js';
 import { toTR } from '../services/engine/categoryMap.js';
 import { getContext, invalidateContext } from '../services/engine/contextCache.js';
-import { smartRouter } from '../services/engine/router.js';
+import { runEngine } from '../services/engine/graph.js';
 import {
     NAV_BUTTONS,
     TX_SUCCESS_BUTTONS,
     CANCEL_BUTTONS,
 } from '../constants/engine.constants.js';
+
+// ═══════════════════════════════════════════════════════════════
+//  Quick Reply Rotation — cancel / done variants
+// ═══════════════════════════════════════════════════════════════
+
+let _lastPicks = {};
+
+function pickRandom(key, variants) {
+    if (variants.length <= 1) return variants[0];
+    const lastIdx = _lastPicks[key] ?? -1;
+    let idx;
+    do {
+        idx = Math.floor(Math.random() * variants.length);
+    } while (idx === lastIdx && variants.length > 1);
+    _lastPicks[key] = idx;
+    return variants[idx];
+}
+
+const CANCEL_MESSAGES = [
+    'İptal edildi. Başka ne yapabilirim?',
+    'Tamam, iptal ettim. Sana başka nasıl yardımcı olabilirim?',
+    'İptal edildi! Başka bir işlem yapmak ister misin?',
+];
+
+const DONE_MESSAGES = [
+    'Görüşmek üzere! 👋',
+    'İyi günler! İhtiyacın olursa buradayım. 👋',
+    'Tekrar görüşmek üzere! Kendine iyi bak. 💙',
+];
 
 const sanitizeInput = (str) => str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
 
@@ -38,12 +67,12 @@ export const action = async (req, res) => {
 
         // ── cancel ──
         if (buttonPayload.action === 'cancel') {
-            return quickReply(res, 'İptal edildi. Başka ne yapabilirim?', CANCEL_BUTTONS);
+            return quickReply(res, pickRandom('cancel', CANCEL_MESSAGES), CANCEL_BUTTONS);
         }
 
         // ── done ──
         if (buttonPayload.action === 'done') {
-            return quickReply(res, 'Görüşmek üzere!', null);
+            return quickReply(res, pickRandom('done', DONE_MESSAGES), null);
         }
 
         // ── confirm_transaction ──
@@ -154,13 +183,21 @@ export const action = async (req, res) => {
             );
         }
 
-        // ── Fallback: delegate to smart router ──
+        // ── Fallback: delegate to LangGraph engine ──
         const ctx = await getContext(userId);
-        const finalState = await smartRouter(ctx, '', buttonPayload, chatHistory);
-        res.status(200).json({ success: true, data: finalState });
+        const result = await runEngine({
+            userId,
+            input: '',
+            actionPayload: buttonPayload,
+            chatHistory,
+            context: ctx,
+        });
+        res.status(200).json({ success: true, data: result });
 
     } catch (error) {
-        res.status(500).json({ success: false, error: error.message || 'Action failed.' });
+        const isGeminiError = error.message?.includes('GoogleGenerativeAI') || error.message?.includes('generativelanguage');
+        const statusCode = error.statusCode || (isGeminiError ? 502 : 500);
+        res.status(statusCode).json({ success: false, error: isGeminiError ? 'AI service unavailable. Please try again later.' : (error.message || 'Action failed.') });
     }
 };
 
@@ -178,9 +215,15 @@ export const chat = async (req, res) => {
         const chatHistory = Array.isArray(history) ? history.slice(0, 20) : [];
 
         const ctx = await getContext(userId);
-        const finalState = await smartRouter(ctx, cleanInput, null, chatHistory);
+        const result = await runEngine({
+            userId,
+            input: cleanInput,
+            actionPayload: null,
+            chatHistory,
+            context: ctx,
+        });
 
-        res.status(200).json({ success: true, data: finalState });
+        res.status(200).json({ success: true, data: result });
     } catch (error) {
         const isGeminiError = error.message?.includes('GoogleGenerativeAI') || error.message?.includes('generativelanguage');
         const statusCode = error.statusCode || (isGeminiError ? 502 : 500);

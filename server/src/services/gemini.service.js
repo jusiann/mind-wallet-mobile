@@ -3,13 +3,29 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const GEMINI_TIMEOUT_MS = 30_000;
 
+// ═══════════════════════════════════════════════════════════════
+//  System Instruction — shared across all calls to reduce prompt tokens
+// ═══════════════════════════════════════════════════════════════
+
+const SYSTEM_INSTRUCTION = `Sen Mind Wallet uygulamasının finansal yapay zeka asistanısın. Adın Mindy.
+Kurallar:
+- Her zaman Türkçe yanıt ver
+- Kısa ve öz ol (max 3-5 cümle)
+- Samimi ama profesyonel bir ton kullan
+- Sadece kişisel finans, bütçe, tasarruf ve harcama konularında yardımcı ol
+- Markdown veya özel formatlama kullanma, düz metin yaz`;
+
 export const getModel = () =>
-    genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL ?? 'gemini-3-flash-preview' });
+    genAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL ?? 'gemini-3-flash-preview',
+        systemInstruction: SYSTEM_INSTRUCTION,
+    });
 
 const getJsonModel = () =>
     genAI.getGenerativeModel({
         model: process.env.GEMINI_MODEL ?? 'gemini-3-flash-preview',
         generationConfig: { responseMimeType: 'application/json' },
+        systemInstruction: SYSTEM_INSTRUCTION,
     });
 
 const withTimeout = (promise, ms = GEMINI_TIMEOUT_MS) =>
@@ -32,26 +48,76 @@ const withRetry = async (fn, retries = 3, baseDelayMs = 500) => {
     }
 };
 
+// ═══════════════════════════════════════════════════════════════
+//  Prompt-level response cache (short TTL, intent classification)
+// ═══════════════════════════════════════════════════════════════
+
+const promptCache = new Map();
+const PROMPT_CACHE_TTL_MS = 60_000; // 1 minute
+const PROMPT_CACHE_MAX_SIZE = 50;
+
+function getCachedResponse(prompt) {
+    const entry = promptCache.get(prompt);
+    if (entry && (Date.now() - entry.ts) < PROMPT_CACHE_TTL_MS) {
+        return entry.value;
+    }
+    if (entry) promptCache.delete(prompt);
+    return null;
+}
+
+function setCachedResponse(prompt, value) {
+    // Evict oldest if cache is full
+    if (promptCache.size >= PROMPT_CACHE_MAX_SIZE) {
+        const firstKey = promptCache.keys().next().value;
+        promptCache.delete(firstKey);
+    }
+    promptCache.set(prompt, { value, ts: Date.now() });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Public API
+// ═══════════════════════════════════════════════════════════════
+
 export const generateJSON = async (prompt, fallback = null) => {
-    const model = getJsonModel();
-    const result = await withRetry(() => withTimeout(model.generateContent(prompt)));
-    const text = result.response.text().replace(/```json|```/g, '').trim();
     try {
-        return JSON.parse(text);
-    } catch {
-        const match = text.match(/\{[\s\S]*\}/);
-        if (match) {
-            try { 
-                return JSON.parse(match[0]); 
-            } catch { }
+        const model = getJsonModel();
+        const result = await withRetry(() => withTimeout(model.generateContent(prompt)));
+        const text = result.response.text().replace(/```json|```/g, '').trim();
+        if (!text) return fallback;
+        try {
+            return JSON.parse(text);
+        } catch {
+            const match = text.match(/\{[\s\S]*\}/);
+            if (match) {
+                try {
+                    return JSON.parse(match[0]);
+                } catch { }
+            }
+            return fallback;
         }
+    } catch (error) {
+        console.error('[GEMINI] Error generating JSON:', error.message);
         return fallback;
     }
 };
 
 export const generateText = async (prompt, fallback = null) => {
-    const model = getModel();
-    const result = await withRetry(() => withTimeout(model.generateContent(prompt)));
-    const text = result.response.text().trim();
-    return text || fallback;
+    try {
+        // Check cache first (useful for repeated classification prompts)
+        const cached = getCachedResponse(prompt);
+        if (cached !== null) return cached;
+
+        const model = getModel();
+        const result = await withRetry(() => withTimeout(model.generateContent(prompt)));
+        const text = result.response.text().trim();
+        const finalText = text || fallback;
+
+        // Cache the response
+        setCachedResponse(prompt, finalText);
+
+        return finalText;
+    } catch (error) {
+        console.error('[GEMINI] Error generating text:', error.message);
+        return fallback;
+    }
 };
