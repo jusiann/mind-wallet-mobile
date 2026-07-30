@@ -1,0 +1,39 @@
+name: mind-wallet
+
+services:
+  db:
+    container_name: mind-wallet-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 139746
+      POSTGRES_DB: mind_wallet_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    container_name: mind-wallet-api
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      PGHOST: db
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  pgdata:
