@@ -461,21 +461,13 @@ export const logout = async (req, res) => {
 
 export const deleteAccount = async (req, res) => {
     try {
-        const { password } = req.body;
-        if (!password)
-            throw ApiError.badRequest('Password is required to delete your account.');
-
         const { rows } = await db.query(
-            'SELECT id, password FROM users WHERE id = $1 LIMIT 1',
+            'SELECT id FROM users WHERE id = $1 LIMIT 1',
             [req.user.id],
         );
         const user = rows[0];
         if (!user)
             throw ApiError.notFound('User not found.');
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid)
-            throw ApiError.unauthorized('Incorrect password.');
 
         await db.query('DELETE FROM users WHERE id = $1', [user.id]);
 

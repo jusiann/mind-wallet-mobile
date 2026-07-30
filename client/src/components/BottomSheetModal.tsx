@@ -26,48 +26,13 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
     const [showModal, setShowModal] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-
-    // Keep refs fresh to avoid stale closures in PanResponder
-    const onCloseRef = useRef(onClose);
-    useEffect(() => { onCloseRef.current = onClose; });
-
     const isClosingRef = useRef(false);
 
-    const animateOut = useCallback(() => {
-        if (isClosingRef.current) return;
-        isClosingRef.current = true;
-        Keyboard.dismiss();
-
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.timing(translateY, {
-                toValue: SCREEN_HEIGHT,
-                duration: 250,
-                useNativeDriver: true,
-            }),
-        ]).start(() => {
-            setShowModal(false);
-            isClosingRef.current = false;
-            onCloseRef.current();
-        });
-    }, [fadeAnim, translateY]);
-
-    // Keep animateOut ref fresh for PanResponder
-    const animateOutRef = useRef(animateOut);
-    useEffect(() => { animateOutRef.current = animateOut; });
-
-    const animateIn = useCallback(() => {
-        fadeAnim.setValue(0);
-        translateY.setValue(SCREEN_HEIGHT);
-
+    const animateIn = () => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 250,
+                duration: 240,
                 useNativeDriver: true,
             }),
             Animated.spring(translateY, {
@@ -77,7 +42,27 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
                 useNativeDriver: true,
             }),
         ]).start();
-    }, [fadeAnim, translateY]);
+    };
+
+    const animateOut = useCallback(() => {
+        if (isClosingRef.current) return;
+        isClosingRef.current = true;
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.timing(translateY, {
+                toValue: SCREEN_HEIGHT,
+                duration: 240,
+                useNativeDriver: true,
+            }),
+        ]).start(() => {
+            setShowModal(false);
+            onClose();
+        });
+    }, [fadeAnim, translateY, onClose]);
 
     useEffect(() => {
         if (visible) {
@@ -88,7 +73,7 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
         } else if (showModal) {
             animateOut();
         }
-    }, [visible]);
+    }, [visible, showModal, animateOut, fadeAnim, translateY]);
 
     const panResponder = useRef(
         PanResponder.create({

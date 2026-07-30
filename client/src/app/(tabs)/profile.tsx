@@ -21,6 +21,9 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { Modal } from 'react-native';
 import ProfileInputGroup from '../../components/tabs/profile/ProfileInputGroup';
 import ProfilePasswordInput from '../../components/tabs/profile/ProfilePasswordInput';
+import QuickActionCard from '../../components/tabs/QuickActionCard';
+import BottomSheetModal from '../../components/BottomSheetModal';
+import BottomSheetHeader from '../../components/tabs/BottomSheetHeader';
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -43,6 +46,7 @@ export default function ProfileScreen() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [pwdLoading, setPwdLoading] = useState(false);
     const [pwdMsg, setPwdMsg] = useState('');
+    const [showPwdModal, setShowPwdModal] = useState(false);
 
     const [logoutLoading, setLogoutLoading] = useState(false);
 
@@ -54,10 +58,10 @@ export default function ProfileScreen() {
     const [showConfirmPin, setShowConfirmPin] = useState(false);
     const [pinLoading, setPinLoading] = useState(false);
     const [pinMsg, setPinMsg] = useState('');
+    const [showPinModal, setShowPinModal] = useState(false);
 
-    const [showDeleteSection, setShowDeleteSection] = useState(false);
-    const [deletePassword, setDeletePassword] = useState('');
-    const [showDeletePwd, setShowDeletePwd] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState('');
 
@@ -76,9 +80,11 @@ export default function ProfileScreen() {
             const res = await updateProfile({ name: name.trim() });
             setUser(prev => prev ? { ...prev, name: res.name } : null);
             setName(res.name);
-            setProfileMsg('success:Profil güncellendi');
+            setProfileMsg('success:Profil Güncellendi');
+            setTimeout(() => setProfileMsg(''), 1500);
         } catch (e: any) {
             setProfileMsg('error:' + e.message);
+            setTimeout(() => setProfileMsg(''), 1500);
         } finally {
             setProfileLoading(false);
         }
@@ -91,9 +97,11 @@ export default function ProfileScreen() {
         setProfileMsg('');
         try {
             await updateProfile({ currency: code });
-            setProfileMsg('success:Para birimi güncellendi');
+            setProfileMsg('success:Para Birimi Güncellendi');
+            setTimeout(() => setProfileMsg(''), 1500);
         } catch (e: any) {
             setProfileMsg('error:' + e.message);
+            setTimeout(() => setProfileMsg(''), 1500);
         } finally {
             setProfileLoading(false);
         }
@@ -116,6 +124,10 @@ export default function ProfileScreen() {
             setNewPwd('');
             setConfirmPwd('');
             setPwdMsg('success:Şifre değiştirildi');
+            setTimeout(() => {
+                setShowPwdModal(false);
+                setPwdMsg('');
+            }, 1500);
         } catch (e: any) {
             setPwdMsg('error:' + e.message);
         } finally {
@@ -144,6 +156,10 @@ export default function ProfileScreen() {
             setNewPin('');
             setConfirmPin('');
             setPinMsg('success:PIN değiştirildi');
+            setTimeout(() => {
+                setShowPinModal(false);
+                setPinMsg('');
+            }, 1500);
         } catch (e: any) {
             setPinMsg('error:' + e.message);
         } finally {
@@ -151,30 +167,22 @@ export default function ProfileScreen() {
         }
     }
 
+    const isDeleteConfirmed = deleteConfirmText.trim().toUpperCase().replace(/İ/g, 'I') === 'ONAYLIYORUM';
+
     async function handleDeleteAccount() {
-        if (!deletePassword.trim()) {
-            setDeleteError('Şifrenizi girin.');
+        if (!isDeleteConfirmed) {
+            setDeleteError("Lütfen onaylamak için 'ONAYLIYORUM' yazın.");
             return;
         }
-        showAlert({
-            title: 'Hesabı Sil',
-            message: 'Tüm verileriniz kalıcı olarak silinecek. Emin misiniz?',
-            confirm: {
-                label: 'Sil',
-                destructive: true,
-                onPress: async () => {
-                    setDeleteLoading(true);
-                    setDeleteError('');
-                    try {
-                        await deleteAccount({ password: deletePassword });
-                    } catch (e: any) {
-                        setDeleteError(e.message || 'Hesap silinemedi.');
-                    } finally {
-                        setDeleteLoading(false);
-                    }
-                },
-            },
-        });
+        setDeleteLoading(true);
+        setDeleteError('');
+        try {
+            await deleteAccount();
+        } catch (e: any) {
+            setDeleteError(e.message || 'Hesap silinemedi.');
+        } finally {
+            setDeleteLoading(false);
+        }
     }
 
     async function handleLogout() {
@@ -269,75 +277,17 @@ export default function ProfileScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* CHANGE PASSWORD */}
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>Şifre Değiştir</Text>
-                        {pwdFields.map(({ label, placeholder, value, set, show, toggle }) => (
-                            <ProfilePasswordInput
-                                key={label}
-                                label={label}
-                                placeholder={placeholder}
-                                value={value}
-                                onChangeText={set}
-                                show={show}
-                                onToggleShow={toggle}
-                            />
-                        ))}
-                        {pwdMsg ? (
-                            <Text style={[styles.msg, pwdMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
-                                {pwdMsg.replace(/^(success|error):/, '')}
-                            </Text>
-                        ) : null}
-                        <TouchableOpacity
-                            style={[styles.btn, pwdLoading && styles.btnDisabled]}
-                            onPress={handleChangePassword}
-                            disabled={pwdLoading}
-                        >
-                            {pwdLoading
-                                ? <ActivityIndicator color={COLORS.white} />
-                                : <Text style={styles.btnText}>Şifreyi Güncelle</Text>
-                            }
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* CHANGE PIN */}
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>PIN Değiştir</Text>
-                        {pinFields.map(({ label, placeholder, value, set, show, toggle }) => (
-                            <ProfilePasswordInput
-                                key={label}
-                                label={label}
-                                placeholder={placeholder}
-                                value={value}
-                                onChangeText={set}
-                                show={show}
-                                onToggleShow={toggle}
-                                keyboardType="numeric"
-                                maxLength={6}
-                            />
-                        ))}
-                        {pinMsg ? (
-                            <Text style={[styles.msg, pinMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
-                                {pinMsg.replace(/^(success|error):/, '')}
-                            </Text>
-                        ) : null}
-                        <TouchableOpacity
-                            style={[styles.btn, pinLoading && styles.btnDisabled]}
-                            onPress={handleChangePin}
-                            disabled={pinLoading}
-                        >
-                            {pinLoading
-                                ? <ActivityIndicator color={COLORS.white} />
-                                : <Text style={styles.btnText}>PIN'i Güncelle</Text>
-                            }
-                        </TouchableOpacity>
+                    {/* QUICK ACTIONS ROW FOR SECURITY */}
+                    <View style={styles.quickActionsRow}>
+                        <QuickActionCard title="Şifre Değiştir" icon="lock-closed-outline" onPress={() => setShowPwdModal(true)} />
+                        <QuickActionCard title="PIN Değiştir" icon="keypad-outline" onPress={() => setShowPinModal(true)} />
                     </View>
 
                     {/* LOGOUT + DELETE ROW */}
                     <View style={styles.bottomActionsRow}>
                         <TouchableOpacity
                             style={styles.deleteAccountToggle}
-                            onPress={() => { setShowDeleteSection(p => !p); setDeleteError(''); setDeletePassword(''); }}
+                            onPress={() => { setShowDeleteModal(true); setDeleteError(''); setDeleteConfirmText(''); }}
                         >
                             <Text style={styles.deleteAccountToggleText}>Hesabımı Sil</Text>
                             <Ionicons name='trash-outline' size={15} color={COLORS.textSecondary} />
@@ -360,58 +310,123 @@ export default function ProfileScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {showDeleteSection && (
-                        <View style={styles.deleteSection}>
-                            <Text style={styles.deleteSectionHint}>
-                                Hesabınızı silmek için şifrenizi girin. Bu işlem geri alınamaz.
-                            </Text>
-                            <ProfilePasswordInput
-                                label="Şifreniz"
-                                value={deletePassword}
-                                onChangeText={setDeletePassword}
-                                placeholder="Şifreniz"
-                                show={showDeletePwd}
-                                onToggleShow={() => setShowDeletePwd(p => !p)}
-                            />
-                            {deleteError ? <Text style={[styles.msg, styles.msgError]}>{deleteError}</Text> : null}
-                            <TouchableOpacity
-                                style={[styles.deleteConfirmBtn, deleteLoading && styles.btnDisabled]}
-                                onPress={handleDeleteAccount}
-                                disabled={deleteLoading}
-                            >
-                                {deleteLoading
-                                    ? <ActivityIndicator color={COLORS.white} />
-                                    : <Text style={styles.deleteConfirmText}>Hesabı Kalıcı Sil</Text>
-                                }
-                            </TouchableOpacity>
-                        </View>
-                    )}
                 </ScrollView>
             </KeyboardAvoidingView>
             {alertEl}
 
-            <Modal visible={showCurrencyModal} transparent animationType="slide" onRequestClose={() => setShowCurrencyModal(false)}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Para Birimi Seçin</Text>
-                            <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
-                                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
-                            </TouchableOpacity>
-                        </View>
-                        {(Object.entries(CURRENCIES) as [CurrencyCode, typeof CURRENCIES[CurrencyCode]][]).map(([code, config]) => (
-                            <TouchableOpacity 
-                                key={code} 
-                                style={[styles.currencyOption, currentCurrency === code && styles.currencyOptionSelected]}
-                                onPress={() => handleCurrencySelect(code)}
-                            >
-                                <Text style={styles.currencyOptionText}>{config.label}</Text>
-                                <Text style={styles.currencyOptionSymbol}>{config.symbol}</Text>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+            {/* CURRENCY BOTTOM SHEET */}
+            <BottomSheetModal visible={showCurrencyModal} onClose={() => setShowCurrencyModal(false)}>
+                <BottomSheetHeader title="Para Birimi Seçin" />
+                <View style={{ padding: 20, gap: 12 }}>
+                    {(Object.entries(CURRENCIES) as [CurrencyCode, typeof CURRENCIES[CurrencyCode]][]).map(([code, config]) => (
+                        <TouchableOpacity
+                            key={code}
+                            style={[styles.currencyOption, currentCurrency === code && styles.currencyOptionSelected]}
+                            onPress={() => handleCurrencySelect(code)}
+                        >
+                            <Text style={styles.currencyOptionText}>{config.label}</Text>
+                            <Text style={styles.currencyOptionSymbol}>{config.symbol}</Text>
+                        </TouchableOpacity>
+                    ))}
                 </View>
-            </Modal>
+            </BottomSheetModal>
+
+            {/* PASSWORD BOTTOM SHEET */}
+            <BottomSheetModal visible={showPwdModal} onClose={() => setShowPwdModal(false)}>
+                <BottomSheetHeader title="Şifre Değiştir" />
+                <View style={{ padding: 20, gap: 16 }}>
+                    {pwdFields.map(({ label, placeholder, value, set, show, toggle }) => (
+                        <ProfilePasswordInput
+                            key={label}
+                            label={label}
+                            placeholder={placeholder}
+                            value={value}
+                            onChangeText={set}
+                            show={show}
+                            onToggleShow={toggle}
+                        />
+                    ))}
+                    {pwdMsg ? (
+                        <Text style={[styles.msg, pwdMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
+                            {pwdMsg.replace(/^(success|error):/, '')}
+                        </Text>
+                    ) : null}
+                    <TouchableOpacity
+                        style={[styles.btn, pwdLoading && styles.btnDisabled]}
+                        onPress={handleChangePassword}
+                        disabled={pwdLoading}
+                    >
+                        {pwdLoading
+                            ? <ActivityIndicator color={COLORS.white} />
+                            : <Text style={styles.btnText}>Şifreyi Güncelle</Text>
+                        }
+                    </TouchableOpacity>
+                </View>
+            </BottomSheetModal>
+
+            {/* PIN BOTTOM SHEET */}
+            <BottomSheetModal visible={showPinModal} onClose={() => setShowPinModal(false)}>
+                <BottomSheetHeader title="PIN Değiştir" />
+                <View style={{ padding: 20, gap: 16 }}>
+                    {pinFields.map(({ label, placeholder, value, set, show, toggle }) => (
+                        <ProfilePasswordInput
+                            key={label}
+                            label={label}
+                            placeholder={placeholder}
+                            value={value}
+                            onChangeText={set}
+                            show={show}
+                            onToggleShow={toggle}
+                            keyboardType="numeric"
+                            maxLength={6}
+                        />
+                    ))}
+                    {pinMsg ? (
+                        <Text style={[styles.msg, pinMsg.startsWith('success') ? styles.msgSuccess : styles.msgError]}>
+                            {pinMsg.replace(/^(success|error):/, '')}
+                        </Text>
+                    ) : null}
+                    <TouchableOpacity
+                        style={[styles.btn, pinLoading && styles.btnDisabled]}
+                        onPress={handleChangePin}
+                        disabled={pinLoading}
+                    >
+                        {pinLoading
+                            ? <ActivityIndicator color={COLORS.white} />
+                            : <Text style={styles.btnText}>PIN'i Güncelle</Text>
+                        }
+                    </TouchableOpacity>
+                </View>
+            </BottomSheetModal>
+
+            {/* DELETE ACCOUNT BOTTOM SHEET */}
+            <BottomSheetModal visible={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+                <BottomSheetHeader title="Hesabımı Sil" />
+                <View style={{ padding: 20, gap: 16 }}>
+                    <Text style={{ fontFamily: 'HankenGrotesk_400Regular', fontSize: 14, color: COLORS.textSecondary, lineHeight: 20 }}>
+                        Hesabınızı ve tüm verilerinizi kalıcı olarak silmek üzeresiniz. Bu işlem geri alınamaz.
+                        Onaylamak için aşağıya <Text style={{ fontFamily: 'HankenGrotesk_700Bold', color: COLORS.error }}>ONAYLIYORUM</Text> yazın.
+                    </Text>
+                    <ProfileInputGroup
+                        label="Onay Metni"
+                        value={deleteConfirmText}
+                        onChangeText={setDeleteConfirmText}
+                        placeholder="ONAYLIYORUM"
+                        autoCapitalize="characters"
+                    />
+                    {deleteError ? <Text style={[styles.msg, styles.msgError]}>{deleteError}</Text> : null}
+                    <TouchableOpacity
+                        style={[styles.deleteConfirmBtn, (deleteLoading || !isDeleteConfirmed) && styles.btnDisabled]}
+                        onPress={handleDeleteAccount}
+                        disabled={deleteLoading || !isDeleteConfirmed}
+                    >
+                        {deleteLoading
+                            ? <ActivityIndicator color={COLORS.white} />
+                            : <Text style={styles.deleteConfirmText}>Hesabı Kalıcı Olarak Sil</Text>
+                        }
+                    </TouchableOpacity>
+                </View>
+            </BottomSheetModal>
         </SafeAreaView>
     );
 }

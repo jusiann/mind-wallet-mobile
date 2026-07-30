@@ -96,6 +96,11 @@ export function getUserInitials(): string {
     return _userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
+export function getFirstName(): string {
+    if (!_userName) return '';
+    return _userName.split(' ')[0] ?? '';
+}
+
 export function setAuthState(authenticated: boolean, needsPin = false, needsPinSetup = false) {
     _authenticated = authenticated;
     _needsPin = needsPin;
@@ -174,10 +179,9 @@ export async function changePassword(data: { current_password: string; new_passw
     });
 }
 
-export async function deleteAccount(data: { password: string }): Promise<void> {
+export async function deleteAccount(): Promise<void> {
     await authFetch(`${BASE_URL}/auth/delete-account`, {
         method: 'DELETE',
-        body: JSON.stringify(data),
     });
     await clearTokens();
     setUserName('');
