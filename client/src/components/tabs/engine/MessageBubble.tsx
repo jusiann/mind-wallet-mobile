@@ -9,6 +9,11 @@ interface Props {
     styles: any;
 }
 
+function formatTime(ts: number): string {
+    const d = new Date(ts);
+    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
 export default function MessageBubble({ message, styles }: Props) {
     if (message.status === 'error') {
         return (
@@ -35,6 +40,8 @@ export default function MessageBubble({ message, styles }: Props) {
         if (message.warning) return styles.bubbleWarning;
         if (message.classification === 'TRANSACTION') return styles.bubbleTransaction;
         if (message.classification?.includes('GOAL')) return styles.bubbleGoal;
+        if (message.classification === 'OUT_OF_SCOPE') return styles.bubbleOutOfScope;
+        if (message.classification === 'TIPS') return styles.bubbleTips;
         return styles.bubbleMindy;
     };
 
@@ -43,6 +50,8 @@ export default function MessageBubble({ message, styles }: Props) {
         if (message.warning) return styles.bubbleWarningText;
         if (message.classification === 'TRANSACTION') return styles.bubbleTransactionText;
         if (message.classification?.includes('GOAL')) return styles.bubbleGoalText;
+        if (message.classification === 'OUT_OF_SCOPE') return styles.bubbleOutOfScopeText;
+        if (message.classification === 'TIPS') return styles.bubbleTipsText;
         return styles.bubbleTextMindy;
     };
 
@@ -50,7 +59,15 @@ export default function MessageBubble({ message, styles }: Props) {
         if (message.warning) return { backgroundColor: COLORS.warning };
         if (message.classification === 'TRANSACTION') return { backgroundColor: COLORS.info };
         if (message.classification?.includes('GOAL')) return { backgroundColor: COLORS.success };
+        if (message.classification === 'OUT_OF_SCOPE') return { backgroundColor: COLORS.secondary };
+        if (message.classification === 'TIPS') return { backgroundColor: '#EAB308' };
         return { backgroundColor: COLORS.primary };
+    };
+
+    const getAvatarIcon = (): string => {
+        if (message.classification === 'OUT_OF_SCOPE') return 'hand-left';
+        if (message.classification === 'TIPS') return 'bulb';
+        return 'sparkles';
     };
 
     return (
@@ -62,7 +79,7 @@ export default function MessageBubble({ message, styles }: Props) {
         >
             {message.role === 'mindy' && (
                 <View style={[styles.mindyAvatar, getAvatarStyle()]}>
-                    <Ionicons name="sparkles" size={13} color={COLORS.white} />
+                    <Ionicons name={getAvatarIcon() as any} size={13} color={COLORS.white} />
                 </View>
             )}
             <View style={styles.bubbleCol}>
@@ -71,6 +88,14 @@ export default function MessageBubble({ message, styles }: Props) {
                         {message.content}
                     </Text>
                 </View>
+                {message.timestamp > 0 && (
+                    <Text style={[
+                        styles.timestampText,
+                        message.role === 'user' && styles.timestampUser,
+                    ]}>
+                        {formatTime(message.timestamp)}
+                    </Text>
+                )}
             </View>
         </View>
     );

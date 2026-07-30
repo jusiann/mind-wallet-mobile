@@ -21,11 +21,23 @@ const createStyles = (COLORS: any) =>
             gap: 12,
             alignItems: 'flex-start',
             marginBottom: 4,
+            width: '100%',
+        },
+        welcomeHeaderRow: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            width: '100%',
+        },
+        welcomeIconRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
         },
         welcomeTitle: {
             fontFamily: 'HankenGrotesk_700Bold',
             fontSize: 22,
             color: COLORS.white,
+            lineHeight: 30,
         },
         welcomeTitleAccent: {
             color: COLORS.primary,
@@ -76,7 +88,7 @@ const createStyles = (COLORS: any) =>
         },
         bubbleCol: {
             maxWidth: '80%',
-            gap: 8,
+            gap: 4,
         },
         bubble: {
             borderRadius: 18,
@@ -120,8 +132,38 @@ const createStyles = (COLORS: any) =>
         bubbleWarningText: {
             color: COLORS.warning,
         },
+        // ── OUT_OF_SCOPE ──
+        bubbleOutOfScope: {
+            backgroundColor: '#F1F5F9',
+            borderBottomLeftRadius: 4,
+            borderWidth: 1,
+            borderColor: '#E2E8F0',
+        },
+        bubbleOutOfScopeText: {
+            color: '#475569',
+        },
+        // ── TIPS ──
+        bubbleTips: {
+            backgroundColor: '#FEF9C3',
+            borderBottomLeftRadius: 4,
+        },
+        bubbleTipsText: {
+            color: '#854D0E',
+        },
         bubbleTextUser: {
             color: COLORS.white,
+        },
+        // ── Timestamp ──
+        timestampText: {
+            fontFamily: 'HankenGrotesk_400Regular',
+            fontSize: 11,
+            color: COLORS.placeholderText,
+            marginTop: 2,
+            marginLeft: 2,
+        },
+        timestampUser: {
+            textAlign: 'right',
+            marginRight: 2,
         },
         typingBubble: {
             paddingHorizontal: 16,

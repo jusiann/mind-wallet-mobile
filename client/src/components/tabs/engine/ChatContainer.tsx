@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useEngineStore } from '../../../store/useEngineStore';
+import { getFirstName } from '../../../store/auth';
 import MessageBubble from './MessageBubble';
 import ActionCard from './ActionCard';
 import TypingIndicator from './TypingIndicator';
@@ -10,6 +11,14 @@ import { ENGINE_CHIPS } from '../../../constants/engine.chips';
 
 interface Props {
     styles: any;
+}
+
+function getGreeting(): { text: string; icon: string } {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12)  return { text: 'Günaydın', icon: 'sunny-outline' };
+    if (h >= 12 && h < 18) return { text: 'İyi günler', icon: 'partly-sunny-outline' };
+    if (h >= 18 && h < 22) return { text: 'İyi akşamlar', icon: 'moon-outline' };
+    return { text: 'İyi geceler', icon: 'cloudy-night-outline' };
 }
 
 export default function ChatContainer({ styles }: Props) {
@@ -26,6 +35,9 @@ export default function ChatContainer({ styles }: Props) {
 
     const showSuggestions = messages.length === 0;
 
+    const greeting = useMemo(() => getGreeting(), []);
+    const firstName = useMemo(() => getFirstName(), []);
+
     return (
         <ScrollView
             ref={scrollRef}
@@ -38,11 +50,15 @@ export default function ChatContainer({ styles }: Props) {
             {showSuggestions && (
                 <>
                     <View style={styles.welcomeCard}>
-                        <Ionicons name="sparkles" size={32} color={COLORS.white} />
-                        <Text style={styles.welcomeTitle}>
-                            Merhaba, ben{' '}
-                            <Text style={styles.welcomeTitleAccent}>Mindy</Text>
-                        </Text>
+                        <View style={styles.welcomeHeaderRow}>
+                            <Text style={styles.welcomeTitle}>
+                                {greeting.text}{firstName ? `, ${firstName}` : ''}! {'\n'}
+                                Ben <Text style={styles.welcomeTitleAccent}>Mindy</Text>
+                            </Text>
+                            <View style={styles.welcomeIconRow}>
+                                <Ionicons name="sparkles" size={28} color={COLORS.white} />
+                            </View>
+                        </View>
                         <Text style={styles.welcomeText}>
                             Finansal alışkanlıklarını analiz edip sana önerilerde bulunmak
                             için buradayım. Ne hakkında konuşmak istersin?

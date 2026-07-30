@@ -22,6 +22,9 @@ const AGENT_THEMES: Record<string, { borderColor: string; activeColor: string; i
     GOAL_CONTRIBUTION:  { borderColor: COLORS.success, activeColor: COLORS.success, icon: 'flag' },
     GOAL_STATUS:        { borderColor: COLORS.success, activeColor: COLORS.success, icon: 'flag' },
     ANALYSIS:           { borderColor: COLORS.primary, activeColor: COLORS.primary, icon: 'analytics' },
+    OUT_OF_SCOPE:       { borderColor: COLORS.secondary, activeColor: COLORS.secondary, icon: 'compass' },
+    TIPS:               { borderColor: '#EAB308', activeColor: '#EAB308', icon: 'bulb' },
+    CHITCHAT:           { borderColor: COLORS.primary, activeColor: COLORS.primary, icon: 'chatbubble' },
 };
 
 export default function ActionCard({

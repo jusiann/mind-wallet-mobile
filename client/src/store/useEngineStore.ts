@@ -16,6 +16,7 @@ export interface ChatMessage {
     classification?: string | null;
     status: 'sent' | 'pending' | 'done' | 'error';
     warning?: string | null;
+    timestamp: number;
 }
 
 export interface EngineResponse {
@@ -108,6 +109,7 @@ export const useEngineStore = create<EngineState>((set, get) => ({
             role: 'user',
             content: text.trim(),
             status: 'sent',
+            timestamp: Date.now(),
         };
 
         set({
@@ -129,6 +131,7 @@ export const useEngineStore = create<EngineState>((set, get) => ({
                 classification: res.data.classification,
                 status: 'done',
                 warning: res.data.warning,
+                timestamp: Date.now(),
             };
 
             set((state) => ({
@@ -143,6 +146,7 @@ export const useEngineStore = create<EngineState>((set, get) => ({
                     ? 'Yapay zeka servisi şu an yoğun. Birazdan tekrar deneyin.'
                     : 'Bir hata oluştu. Lütfen tekrar dene.',
                 status: 'error',
+                timestamp: Date.now(),
             };
             set((state) => ({
                 messages: [...state.messages, errorMsg],
@@ -193,6 +197,7 @@ export const useEngineStore = create<EngineState>((set, get) => ({
                 classification: res.data.classification,
                 status: 'done',
                 warning: res.data.warning,
+                timestamp: Date.now(),
             };
 
             const MUTATING_ACTIONS = [
@@ -213,6 +218,7 @@ export const useEngineStore = create<EngineState>((set, get) => ({
                 role: 'mindy',
                 content: 'İşlem gerçekleştirilemedi. ' + (error.message || 'Lütfen tekrar dene.'),
                 status: 'error',
+                timestamp: Date.now(),
             };
             set((state) => ({
                 messages: [...state.messages, errorMsg],
@@ -249,6 +255,7 @@ export const useEngineStore = create<EngineState>((set, get) => ({
                     classification: res.data.classification,
                     status: 'done',
                     warning: res.data.warning,
+                    timestamp: Date.now(),
                 };
 
                 set((state) => ({
@@ -263,6 +270,7 @@ export const useEngineStore = create<EngineState>((set, get) => ({
                         ? 'Yapay zeka servisi şu an yoğun. Birazdan tekrar deneyin.'
                         : 'Bir hata oluştu. Lütfen tekrar dene.',
                     status: 'error',
+                    timestamp: Date.now(),
                 };
                 set((state) => ({
                     messages: [...state.messages, errorMsg],

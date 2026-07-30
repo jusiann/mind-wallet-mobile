@@ -9,8 +9,9 @@ export interface EngineChip {
 }
 
 export const ENGINE_CHIPS: EngineChip[] = [
-    { label: 'Yeni harcama ekle',    icon: 'wallet-outline',    payload: { action: 'start_transaction' } },
-    { label: 'Hedef oluştur',        icon: 'flag-outline',      payload: { action: 'start_goal' } },
-    { label: 'Aylık durumum nasıl?', icon: 'pie-chart-outline', payload: { action: 'start_analysis' } },
-    { label: 'Tasarruf tavsiyesi ver',icon: 'bulb-outline',     payload: { action: 'get_tips' } },
+    { label: 'Yeni harcama ekle',     icon: 'wallet-outline',    payload: { action: 'start_transaction' } },
+    { label: 'Hedef oluştur',         icon: 'flag-outline',      payload: { action: 'start_goal' } },
+    { label: 'Aylık durumum nasıl?',  icon: 'pie-chart-outline', payload: { action: 'start_analysis' } },
+    { label: 'Tasarruf tavsiyesi ver', icon: 'bulb-outline',     payload: { action: 'get_tips' } },
+    { label: 'Hedefe para ekle',      icon: 'cash-outline',      payload: { action: 'start_goal_contribution' } },
 ];
