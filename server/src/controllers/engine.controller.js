@@ -2,43 +2,17 @@ import ApiError from '../utils/error.js';
 import db from '../lib/db/database.js';
 import { createTransactionRecord } from './transaction.controller.js';
 import { createGoalRecord } from './goals.controller.js';
-import { toTR } from '../services/engine/categoryMap.js';
+import { toTR, pickRandom } from '../utils/engine.util.js';
 import { getContext, invalidateContext } from '../services/engine/contextCache.js';
 import { runEngine } from '../services/engine/graph.js';
 import {
     NAV_BUTTONS,
     TX_SUCCESS_BUTTONS,
     CANCEL_BUTTONS,
+    CANCEL_MESSAGES,
+    DONE_MESSAGES,
 } from '../constants/engine.constants.js';
 
-// ═══════════════════════════════════════════════════════════════
-//  Quick Reply Rotation — cancel / done variants
-// ═══════════════════════════════════════════════════════════════
-
-let _lastPicks = {};
-
-function pickRandom(key, variants) {
-    if (variants.length <= 1) return variants[0];
-    const lastIdx = _lastPicks[key] ?? -1;
-    let idx;
-    do {
-        idx = Math.floor(Math.random() * variants.length);
-    } while (idx === lastIdx && variants.length > 1);
-    _lastPicks[key] = idx;
-    return variants[idx];
-}
-
-const CANCEL_MESSAGES = [
-    'İptal edildi. Başka ne yapabilirim?',
-    'Tamam, iptal ettim. Sana başka nasıl yardımcı olabilirim?',
-    'İptal edildi! Başka bir işlem yapmak ister misin?',
-];
-
-const DONE_MESSAGES = [
-    'Görüşmek üzere! 👋',
-    'İyi günler! İhtiyacın olursa buradayım. 👋',
-    'Tekrar görüşmek üzere! Kendine iyi bak. 💙',
-];
 
 const sanitizeInput = (str) => str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '').trim();
 
@@ -65,17 +39,14 @@ export const action = async (req, res) => {
         const userId = req.user.id;
         const chatHistory = Array.isArray(history) ? history.slice(0, 20) : [];
 
-        // ── cancel ──
         if (buttonPayload.action === 'cancel') {
             return quickReply(res, pickRandom('cancel', CANCEL_MESSAGES), CANCEL_BUTTONS);
         }
 
-        // ── done ──
         if (buttonPayload.action === 'done') {
             return quickReply(res, pickRandom('done', DONE_MESSAGES), null);
         }
 
-        // ── confirm_transaction ──
         if (buttonPayload.action === 'confirm_transaction') {
             const tx = buttonPayload.transaction;
             if (!tx || typeof tx.amount !== 'number' || tx.amount <= 0)
@@ -94,7 +65,6 @@ export const action = async (req, res) => {
             );
         }
 
-        // ── confirm_goal ──
         if (buttonPayload.action === 'confirm_goal') {
             const goal = buttonPayload.goal;
             if (!goal || !goal.title || !goal.target_amount || !goal.deadline)
@@ -111,7 +81,6 @@ export const action = async (req, res) => {
             );
         }
 
-        // ── confirm_goal_contribution ──
         if (buttonPayload.action === 'confirm_goal_contribution') {
             const contribution = buttonPayload.contribution;
             if (!contribution?.goalId || !contribution?.amount || contribution.amount <= 0)
@@ -131,7 +100,6 @@ export const action = async (req, res) => {
             );
         }
 
-        // ── confirm_pledge ──
         if (buttonPayload.action === 'confirm_pledge') {
             const pledge = buttonPayload.pledge;
             if (!pledge?.goalId || !pledge?.amount || pledge.amount <= 0)
@@ -163,7 +131,6 @@ export const action = async (req, res) => {
             );
         }
 
-        // ── confirm_routing ──
         if (buttonPayload.action === 'confirm_routing') {
             const route = buttonPayload.route;
             if (!route?.goalId || !route?.amount || route.amount <= 0)
@@ -183,7 +150,6 @@ export const action = async (req, res) => {
             );
         }
 
-        // ── Fallback: delegate to LangGraph engine ──
         const ctx = await getContext(userId);
         const result = await runEngine({
             userId,

@@ -1,4 +1,4 @@
-import { toTR } from '../categoryMap.js';
+import { toTR } from '../../../utils/engine.util.js';
 
 // ═══════════════════════════════════════════════════════════════
 //  Deterministic category delta computation

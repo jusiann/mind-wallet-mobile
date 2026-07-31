@@ -1,9 +1,6 @@
 import db from '../../lib/db/database.js';
 
-// Cache structure: Map<userId, { data: object, ts: number }>
 const cache = new Map();
-
-// 5 minutes TTL fallback
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const getContext = async (userId) => {

@@ -206,7 +206,7 @@ export const updateGoal = async (req, res) => {
         if (title !== undefined) {
             if (typeof title !== 'string' || title.trim().length === 0 || title.trim().length > 100)
                 throw ApiError.badRequest('title must be between 1 and 100 characters.');
-            
+
             updates.push(`title = $${idx++}`);
             params.push(title.trim());
         }
@@ -214,7 +214,7 @@ export const updateGoal = async (req, res) => {
             const amountError = validateTargetAmount(target_amount);
             if (amountError)
                 throw ApiError.badRequest(amountError);
-            
+
             updates.push(`target_amount = $${idx++}`);
             params.push(parseFloat(target_amount));
         }
@@ -222,7 +222,7 @@ export const updateGoal = async (req, res) => {
             const amountError = validateCurrentAmount(current_amount);
             if (amountError)
                 throw ApiError.badRequest(amountError);
-            
+
             updates.push(`current_amount = $${idx++}`);
             params.push(parseFloat(current_amount));
         }
@@ -230,7 +230,7 @@ export const updateGoal = async (req, res) => {
             const deadlineError = validateDeadline(deadline, false);
             if (deadlineError)
                 throw ApiError.badRequest(deadlineError);
-            
+
             updates.push(`deadline = $${idx++}`);
             params.push(new Date(deadline));
         }
@@ -238,7 +238,7 @@ export const updateGoal = async (req, res) => {
             const statusError = validateStatus(status);
             if (statusError)
                 throw ApiError.badRequest(statusError);
-            
+
             updates.push(`status = $${idx++}`);
             params.push(status);
         }

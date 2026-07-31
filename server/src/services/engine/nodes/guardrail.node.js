@@ -67,7 +67,6 @@ Plain text or "null" only — no JSON.`;
     if (rawWarning && rawWarning.trim().toLowerCase() !== 'null') {
         return { warning: rawWarning.trim() };
     } else if (rawWarning === null) {
-        // Fallback warnings if Gemini API fails
         if (isMassiveAmount) {
             return { warning: 'Bu tutar çok yüksek! Gerçekten bu harcamayı kaydetmek istediğine emin misin?' };
         }
