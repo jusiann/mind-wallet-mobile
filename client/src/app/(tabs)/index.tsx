@@ -31,10 +31,10 @@ function donutSlicePath(startAngle: number, endAngle: number): string {
     const cx = CHART_SIZE / 2;
     const cy = CHART_SIZE / 2;
     if (endAngle - startAngle >= 360) endAngle = startAngle + 359.99;
-    const os  = polarToCartesian(cx, cy, OUTER_R, startAngle);
-    const oe  = polarToCartesian(cx, cy, OUTER_R, endAngle);
+    const os = polarToCartesian(cx, cy, OUTER_R, startAngle);
+    const oe = polarToCartesian(cx, cy, OUTER_R, endAngle);
     const is_ = polarToCartesian(cx, cy, INNER_R, startAngle);
-    const ie  = polarToCartesian(cx, cy, INNER_R, endAngle);
+    const ie = polarToCartesian(cx, cy, INNER_R, endAngle);
     const large = endAngle - startAngle > 180 ? 1 : 0;
     return [
         `M ${os.x} ${os.y}`,
@@ -52,21 +52,21 @@ function formatDate(iso: string): string {
 }
 
 export default function DashboardScreen() {
-    const router     = useRouter();
+    const router = useRouter();
     const navigation = useNavigation();
     const styles = createStyles(COLORS);
     const { formatCurrency, formatCurrencyShort } = useCurrency();
 
-    const [data, setData]               = useState<DashboardData | null>(null);
-    const [loading, setLoading]         = useState(true);
-    const [error, setError]             = useState('');
-    const [initials, setInitials]       = useState(getUserInitials());
+    const [data, setData] = useState<DashboardData | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [initials, setInitials] = useState(getUserInitials());
     const [categorySpend, setCategorySpend] = useState<CategorySpend[]>([]);
 
-    const topScrollRef  = useRef<ScrollView>(null);
-    const topScrollX    = useRef(new Animated.Value(0)).current;
+    const topScrollRef = useRef<ScrollView>(null);
+    const topScrollX = useRef(new Animated.Value(0)).current;
     const goalsScrollRef = useRef<ScrollView>(null);
-    const goalsScrollX   = useRef(new Animated.Value(0)).current;
+    const goalsScrollX = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         navigation.setOptions({
@@ -83,7 +83,7 @@ export default function DashboardScreen() {
         useCallback(() => {
             const shouldRefresh = useEngineStore.getState().consumeRefresh();
             setInitials(getUserInitials());
-            
+
             if (shouldRefresh || !isLoaded.current) {
                 isLoaded.current = true;
                 Promise.all([getDashboard(), fetchMonthlyExpensesByCategory()]).then(
@@ -106,7 +106,7 @@ export default function DashboardScreen() {
     let _angle = 0;
     const spendSlices = categorySpend.slice(0, CHART_COLORS.length).map((cat, i) => {
         const sweep = spendTotal > 0 ? (cat.amount / spendTotal) * 360 : 0;
-        const path  = donutSlicePath(_angle, _angle + sweep);
+        const path = donutSlicePath(_angle, _angle + sweep);
         _angle += sweep;
         return { path, color: CHART_COLORS[i] };
     });
@@ -178,31 +178,33 @@ export default function DashboardScreen() {
                                     {categorySpend.length === 0 ? (
                                         <Text style={styles.chartEmpty}>Bu ay henüz harcama yok.</Text>
                                     ) : (
-                                        <View style={styles.chartCardRow}>
-                                            {/* DONUT CHART */}
-                                            <View style={styles.chartPieWrap}>
-                                                <Svg width={CHART_SIZE} height={CHART_SIZE}>
-                                                    {spendSlices.map((s, i) => (
-                                                        <Path key={i} d={s.path} fill={s.color} />
-                                                    ))}
-                                                </Svg>
-                                                <View style={styles.chartPieCenter}>
-                                                    <Text style={styles.chartPieCenterAmt}>
-                                                        {formatCurrencyShort(spendTotal)}
+                                        <View style={styles.chartCardInner}>
+                                            <View style={styles.chartCardLeft}>
+                                                <View style={styles.chartCardTop}>
+                                                    <Text style={styles.chartCardTopLabel}>TOPLAM GİDER</Text>
+                                                    <Text style={styles.chartCardTopAmount}>
+                                                        {formatCurrency(spendTotal)}
                                                     </Text>
-                                                    <Text style={styles.chartPieCenterLbl}>gider</Text>
+                                                </View>
+                                                <View style={styles.chartCatList}>
+                                                    {categorySpend.slice(0, 3).map((cat, i) => (
+                                                        <View key={cat.rawName} style={styles.chartCatRow}>
+                                                            <View style={[styles.chartCatDot, { backgroundColor: CHART_COLORS[i] }]} />
+                                                            <Text style={styles.chartCatName} numberOfLines={1}>{cat.name}</Text>
+                                                            <Text style={styles.chartCatAmt}>{formatCurrencyShort(cat.amount)}</Text>
+                                                        </View>
+                                                    ))}
                                                 </View>
                                             </View>
 
-                                            {/* CATEGORY LIST */}
-                                            <View style={styles.chartCatList}>
-                                                {categorySpend.slice(0, 5).map((cat, i) => (
-                                                    <View key={cat.rawName} style={styles.chartCatRow}>
-                                                        <View style={[styles.chartCatDot, { backgroundColor: CHART_COLORS[i] }]} />
-                                                        <Text style={styles.chartCatName} numberOfLines={1}>{cat.name}</Text>
-                                                        <Text style={styles.chartCatAmt}>{formatCurrencyShort(cat.amount)}</Text>
-                                                    </View>
-                                                ))}
+                                            <View style={styles.chartCardRight}>
+                                                <View style={styles.chartPieWrap}>
+                                                    <Svg width={CHART_SIZE} height={CHART_SIZE}>
+                                                        {spendSlices.map((s, i) => (
+                                                            <Path key={i} d={s.path} fill={s.color} />
+                                                        ))}
+                                                    </Svg>
+                                                </View>
                                             </View>
                                         </View>
                                     )}

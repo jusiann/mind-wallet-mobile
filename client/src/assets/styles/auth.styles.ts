@@ -9,16 +9,23 @@ const createStyles = (COLORS: any) =>
         scroll: {
             flexGrow: 1,
             paddingHorizontal: 24,
-            paddingVertical: 32,
             justifyContent: 'center',
+        },
+        topSpacer: {
+            flex: 1,
+            justifyContent: 'flex-end',
+        },
+        bottomSpacer: {
+            flex: 1,
+            justifyContent: 'flex-start',
         },
         logoRow: {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 12,
-            paddingTop: 28,
-            paddingBottom: 20,
+            paddingTop: 0,
+            paddingBottom: 8,
             paddingHorizontal: 24,
         },
         logoText: {

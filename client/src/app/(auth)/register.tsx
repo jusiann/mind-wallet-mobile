@@ -43,7 +43,9 @@ export default function RegisterScreen() {
 
     return (
         <AuthScreenWrapper header={<AuthLogo />}>
-            <AuthHeader title="Hesap Oluştur" subtitle="İkinci finansal beyninize katılın." />
+            <View style={styles.topSpacer}>
+                <AuthHeader title="Hesap Oluştur" subtitle="İkinci finansal beyninize katılın." />
+            </View>
 
             <View style={styles.card}>
                 <AuthInput
@@ -81,11 +83,13 @@ export default function RegisterScreen() {
                 <AuthSubmitButton title="Kayıt Ol" onPress={handleRegister} loading={loading} />
             </View>
 
-            <AuthFooter 
-                text="Zaten hesabınız var mı?" 
-                linkText="Giriş Yap" 
-                onPress={() => router.replace('/(auth)/login')} 
-            />
+            <View style={styles.bottomSpacer}>
+                <AuthFooter 
+                    text="Zaten hesabınız var mı?" 
+                    linkText="Giriş Yap" 
+                    onPress={() => router.replace('/(auth)/login')} 
+                />
+            </View>
         </AuthScreenWrapper>
     );
 }

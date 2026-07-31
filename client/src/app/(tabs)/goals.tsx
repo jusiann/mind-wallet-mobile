@@ -113,7 +113,7 @@ export default function GoalsScreen() {
     useFocusEffect(
         useCallback(() => {
             const shouldRefresh = useEngineStore.getState().consumeRefresh();
-            
+
             if (shouldRefresh || !isLoaded.current) {
                 isLoaded.current = true;
                 loadGoals(true);
@@ -376,7 +376,7 @@ export default function GoalsScreen() {
                     {/* GOALS */}
                     {goals.length === 0 ? (
                         <View style={{ flex: 1, marginTop: 40 }}>
-                            <EmptyState 
+                            <EmptyState
                                 icon="flag-outline"
                                 title="Henüz hedef yok"
                                 hint="Yeni hedef ekleyerek veya Mindy ile konuşarak başlayabilirsin."

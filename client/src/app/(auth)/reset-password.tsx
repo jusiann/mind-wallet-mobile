@@ -50,7 +50,9 @@ export default function ResetPasswordScreen() {
 
     return (
         <AuthScreenWrapper>
-            <AuthHeader title="Yeni Şifre" subtitle="Yeni şifrenizi belirleyin." />
+            <View style={styles.topSpacer}>
+                <AuthHeader title="Yeni Şifre" subtitle="Yeni şifrenizi belirleyin." />
+            </View>
 
             <View style={styles.card}>
                 <AuthPasswordInput
@@ -75,12 +77,14 @@ export default function ResetPasswordScreen() {
                 />
             </View>
 
-            <AuthFooter 
-                text="Geri Dön" 
-                linkText="" 
-                onPress={() => router.back()} 
-                isBack
-            />
+            <View style={styles.bottomSpacer}>
+                <AuthFooter 
+                    text="Geri Dön" 
+                    linkText="" 
+                    onPress={() => router.back()} 
+                    isBack
+                />
+            </View>
 
             {alertEl}
         </AuthScreenWrapper>

@@ -37,7 +37,9 @@ export default function LoginScreen() {
 
     return (
         <AuthScreenWrapper header={<AuthLogo />}>
-            <AuthHeader title="Giriş Yap" subtitle="Hesabınıza giriş yapın." />
+            <View style={styles.topSpacer}>
+                <AuthHeader title="Giriş Yap" subtitle="Hesabınıza giriş yapın." />
+            </View>
 
             <View style={styles.card}>
                 <AuthInput
@@ -62,11 +64,13 @@ export default function LoginScreen() {
                 <AuthSubmitButton title="Giriş Yap" onPress={handleLogin} loading={loading} />
             </View>
 
-            <AuthFooter 
-                text="Hesabınız yok mu?" 
-                linkText="Hesap Oluştur" 
-                onPress={() => router.replace('/(auth)/register')} 
-            />
+            <View style={styles.bottomSpacer}>
+                <AuthFooter 
+                    text="Hesabınız yok mu?" 
+                    linkText="Hesap Oluştur" 
+                    onPress={() => router.replace('/(auth)/register')} 
+                />
+            </View>
         </AuthScreenWrapper>
     );
 }

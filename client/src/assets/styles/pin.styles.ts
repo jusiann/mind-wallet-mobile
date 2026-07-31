@@ -124,5 +124,18 @@ export default function createStyles(COLORS: any) {
             color: COLORS.error,
             textAlign: 'center',
         },
+        header: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            height: 64,
+        },
+        backBtn: {
+            width: 40,
+            height: 40,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
     });
 }

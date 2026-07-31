@@ -15,9 +15,9 @@ export const CHART_COLORS = [
     '#6B7280',
 ];
 
-export const CHART_SIZE = Math.min(Math.round((SCREEN_WIDTH - 80) * 0.44), 140);
-export const OUTER_R = CHART_SIZE / 2 - 2;
-export const INNER_R = OUTER_R * 0.55;
+export const CHART_SIZE = Math.min(Math.round((SCREEN_WIDTH - 80) * 0.35), 100);
+export const OUTER_R = CHART_SIZE / 2;
+export const INNER_R = OUTER_R * 0.6;
 
 const createStyles = (COLORS: any) =>
     StyleSheet.create({
@@ -132,41 +132,49 @@ const createStyles = (COLORS: any) =>
             flex: 1,
             backgroundColor: COLORS.textPrimary,
             borderRadius: 24,
-            padding: 28,
-            justifyContent: 'center',
+            padding: 24,
         },
-        chartCardRow: {
+        chartCardInner: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 16,
+            justifyContent: 'space-between',
+            flex: 1,
         },
-        chartPieWrap: {
-            position: 'relative',
-            alignItems: 'center',
-            justifyContent: 'center',
+        chartCardLeft: {
+            flex: 1.2,
+            justifyContent: 'space-between',
+            height: '100%',
+            paddingRight: 10,
         },
-        chartPieCenter: {
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            alignItems: 'center',
-            justifyContent: 'center',
+        chartCardTop: {
+            alignItems: 'flex-start',
+            gap: 2,
         },
-        chartPieCenterAmt: {
-            fontFamily: 'HankenGrotesk_700Bold',
-            fontSize: 13,
-            color: COLORS.white,
-        },
-        chartPieCenterLbl: {
-            fontFamily: 'HankenGrotesk_400Regular',
-            fontSize: 10,
+        chartCardTopLabel: {
+            fontFamily: 'HankenGrotesk_500Medium',
+            fontSize: 12,
+            letterSpacing: 1.5,
             color: 'rgba(255,255,255,0.6)',
         },
+        chartCardTopAmount: {
+            fontFamily: 'HankenGrotesk_700Bold',
+            fontSize: 36,
+            letterSpacing: -0.5,
+            color: COLORS.white,
+        },
+        chartCardRight: {
+            flex: 0.9,
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        chartPieWrap: {
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
         chartCatList: {
-            flex: 1,
-            gap: 12,
+            gap: 8,
+            marginTop: 'auto',
+            paddingRight: 20,
         },
         chartCatRow: {
             flexDirection: 'row',
@@ -174,19 +182,19 @@ const createStyles = (COLORS: any) =>
             gap: 8,
         },
         chartCatDot: {
-            width: 12,
-            height: 12,
-            borderRadius: 6,
+            width: 8,
+            height: 8,
+            borderRadius: 4,
         },
         chartCatName: {
             flex: 1,
             fontFamily: 'HankenGrotesk_400Regular',
-            fontSize: 14,
+            fontSize: 13,
             color: 'rgba(255,255,255,0.85)',
         },
         chartCatAmt: {
             fontFamily: 'HankenGrotesk_700Bold',
-            fontSize: 14,
+            fontSize: 13,
             color: COLORS.white,
         },
         chartEmpty: {

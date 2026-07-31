@@ -108,6 +108,21 @@ export default function PinSetupScreen() {
 
     return (
         <SafeAreaView style={styles.safeArea}>
+            <View style={styles.header}>
+                {step === 2 && (
+                    <TouchableOpacity 
+                        style={styles.backBtn} 
+                        onPress={() => {
+                            setStep(1);
+                            setFirstPin('');
+                            setSecondPin('');
+                            setError('');
+                        }}
+                    >
+                        <Ionicons name="arrow-back" size={28} color={COLORS.textPrimary} />
+                    </TouchableOpacity>
+                )}
+            </View>
             <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                 <ScrollView contentContainerStyle={styles.scroll}>
 

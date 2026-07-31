@@ -57,10 +57,12 @@ export default function ForgotPasswordScreen() {
 
     return (
         <AuthScreenWrapper>
-            <AuthHeader 
-                title="Şifre Sıfırlama" 
-                subtitle={codeSent ? 'E-postanıza gelen 8 haneli kodu girin.' : 'E-posta adresinizi girin, şifre sıfırlama kodunu gönderelim.'} 
-            />
+            <View style={styles.topSpacer}>
+                <AuthHeader 
+                    title="Şifre Sıfırlama" 
+                    subtitle={codeSent ? 'E-postanıza gelen 8 haneli kodu girin.' : 'E-posta adresinizi girin, şifre sıfırlama kodunu gönderelim.'} 
+                />
+            </View>
 
             <View style={styles.card}>
                 <View style={styles.inputRow}>
@@ -102,12 +104,14 @@ export default function ForgotPasswordScreen() {
                 <AuthError error={error} />
             </View>
 
-            <AuthFooter 
-                text="Geri Dön" 
-                linkText="" 
-                onPress={() => router.back()} 
-                isBack
-            />
+            <View style={styles.bottomSpacer}>
+                <AuthFooter 
+                    text="Geri Dön" 
+                    linkText="" 
+                    onPress={() => router.back()} 
+                    isBack
+                />
+            </View>
         </AuthScreenWrapper>
     );
 }

@@ -213,7 +213,7 @@ export default function ProfileScreen() {
         <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <Ionicons name='arrow-back' size={22} color={COLORS.textPrimary} />
+                    <Ionicons name='arrow-back' size={28} color={COLORS.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Profil</Text>
                 <View style={styles.spacer} />
