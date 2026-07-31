@@ -1,5 +1,5 @@
 import { generateText } from '../../gemini.service.js';
-import { toTR } from '../categoryMap.js';
+import { toTR } from '../../../utils/engine.util.js';
 import { NAV_BUTTONS } from '../../../constants/engine.constants.js';
 
 // ═══════════════════════════════════════════════════════════════

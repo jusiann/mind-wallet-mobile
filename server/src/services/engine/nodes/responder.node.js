@@ -1,4 +1,4 @@
-import { toTR } from '../categoryMap.js';
+import { toTR, pickRandom, levenshtein, findGoalByTitle, buildCategoryButtons } from '../../../utils/engine.util.js';
 import {
     NAV_BUTTONS,
     TX_CONFIRM_BUTTONS,
@@ -7,103 +7,14 @@ import {
     GOAL_STATUS_EXTRA_BUTTONS,
     GOAL_CONTRIB_CONFIRM_BUTTONS,
     CANCEL_BUTTONS,
+    CHITCHAT_MESSAGES,
+    OUT_OF_SCOPE_MESSAGES,
+    TX_START_MESSAGES,
+    GOAL_START_MESSAGES,
+    UNKNOWN_ACTION_MESSAGES,
+    FALLBACK_MESSAGES,
 } from '../../../constants/engine.constants.js';
 
-// ═══════════════════════════════════════════════════════════════
-//  Quick Reply Rotation — anti-repeat random selection
-// ═══════════════════════════════════════════════════════════════
-
-let _lastPicks = {};
-
-function pickRandom(key, variants) {
-    if (variants.length <= 1) return variants[0];
-    const lastIdx = _lastPicks[key] ?? -1;
-    let idx;
-    do {
-        idx = Math.floor(Math.random() * variants.length);
-    } while (idx === lastIdx && variants.length > 1);
-    _lastPicks[key] = idx;
-    return variants[idx];
-}
-
-// ── Message Variants ──
-
-const CHITCHAT_MESSAGES = [
-    'Merhaba! Ben Mindy, senin finansal asistanın. Sana nasıl yardımcı olabilirim?',
-    'Selam! Bugün bütçen hakkında konuşmak ister misin? 💰',
-    'Hoş geldin! Harcamalarını analiz edeyim mi, yoksa başka bir konuda yardımcı olayım mı?',
-];
-
-const OUT_OF_SCOPE_MESSAGES = [
-    'Üzgünüm, ben Mind Wallet\'ın finansal asistanı Mindy\'yim! 🏦\nBütçe analizi, işlem kaydı ve tasarruf hedefleri konularında yardımcı olabilirim.\n\nSana nasıl yardımcı olabilirim?',
-    'Bu konuda yardımcı olamıyorum ama finansal konularda buradayım! 💡\nHarcamalarını analiz etmek, hedef oluşturmak veya tasarruf tavsiyeleri almak ister misin?',
-    'Benim uzmanlık alanım kişisel finans. 📊\nBütçen hakkında sohbet edelim mi? İşlem kaydı veya hedef takibi yapabilirim.',
-];
-
-const TX_START_MESSAGES = [
-    'Tabii! Ne kadar harcadın veya ne kadar gelir aldın?\n(Örn: "Markete 250 TL harcadım" veya "15.000 TL maaş yattı")',
-    'Hemen kaydedelim! Harcama veya gelir tutarını yaz.\n(Örn: "Kafe 80 TL" veya "Freelance 5.000 TL gelir")',
-    'Yeni işlem ekleyelim! Ne harcadın veya ne kazandın?\n(Örn: "Market alışverişi 320 TL" veya "Maaş 25.000 TL")',
-];
-
-const GOAL_START_MESSAGES = [
-    'Harika! Ne için ve ne kadar biriktirmek istiyorsun?\n(Örn: "Tatil için 15.000 TL biriktirmek istiyorum")',
-    'Yeni bir hedef oluşturalım! Neyin için ne kadar biriktirmek istiyorsun?\n(Örn: "Araba için 100.000 TL")',
-    'Hedef belirleyelim! Bana hedefinin adını ve tutarını söyle.\n(Örn: "Acil durum fonu 20.000 TL")',
-];
-
-const UNKNOWN_ACTION_MESSAGES = [
-    'Bu işlemi anlayamadım. Ne yapmak istersin?',
-    'Bunu tam çözemedim. Sana nasıl yardımcı olabilirim?',
-    'Anlamadım, bir daha açıklar mısın? İşte yapabileceklerim:',
-];
-
-const FALLBACK_MESSAGES = [
-    'Bu işlemi anlayamadım. Ne yapmak istersin?',
-    'Tam anlayamadım. Aşağıdaki seçeneklerden birini dene!',
-    'Bunu çözemedim ama şunlardan biriyle yardımcı olabilirim:',
-];
-
-// ═══════════════════════════════════════════════════════════════
-//  Goal title matching (from old goal.agent.js)
-// ═══════════════════════════════════════════════════════════════
-
-function levenshtein(a, b) {
-    const m = a.length, n = b.length;
-    const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-    for (let i = 1; i <= m; i++)
-        for (let j = 1; j <= n; j++)
-            dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-    return dp[m][n];
-}
-
-function findGoalByTitle(input, goals) {
-    const lower = input.toLowerCase();
-    const subMatch = goals.find((g) => lower.includes(g.title.toLowerCase()));
-    if (subMatch) return subMatch;
-    return goals.find((g) => levenshtein(lower, g.title.toLowerCase()) <= 2) ?? null;
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  Category button builder
-// ═══════════════════════════════════════════════════════════════
-
-function buildCategoryButtons(categoryDeltas = []) {
-    return categoryDeltas.map((d, i) => {
-        const label = `${toTR(d.name)} (+${Number(d.delta).toLocaleString('tr-TR')} TL)`;
-        return {
-            id: `cat_${i}`,
-            label,
-            payload: { action: 'reduce_category', category: d.name, amount: d.currentSpent, delta: d.delta },
-        };
-    });
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  Responder Node — LangGraph Node Function (No Gemini call)
-//  Pure logic: builds { message, buttons, classification }
-// ═══════════════════════════════════════════════════════════════
 
 export const responderNode = async (state) => {
     const { intent, input, pendingData, warning, analysisResult, context, actionPayload, response } = state;
@@ -114,9 +25,6 @@ export const responderNode = async (state) => {
         return { response: { ...response, buttons: response.buttons ?? NAV_BUTTONS } };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  OUT_OF_SCOPE — Finansal olmayan mesajlar
-    // ═══════════════════════════════════════════════════════
     if (intent === 'OUT_OF_SCOPE') {
         return {
             response: {
@@ -132,9 +40,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  CHITCHAT — Selamlama / teşekkür
-    // ═══════════════════════════════════════════════════════
     if (intent === 'CHITCHAT') {
         return {
             response: {
@@ -150,9 +55,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  CANCEL — İptal mesajı
-    // ═══════════════════════════════════════════════════════
     if (intent === 'CANCEL') {
         return {
             response: {
@@ -167,9 +69,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  ACTION: Transaction/Goal Start prompts
-    // ═══════════════════════════════════════════════════════
     if (intent === 'ACTION_TRANSACTION_START') {
         return {
             response: {
@@ -200,9 +99,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  TRANSACTION — Confirm with optional warning
-    // ═══════════════════════════════════════════════════════
     if (intent === 'TRANSACTION') {
         if (!pendingData || pendingData.type !== 'transaction') {
             return {
@@ -234,9 +130,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  GOAL_CREATION — Duration selection or amount prompt
-    // ═══════════════════════════════════════════════════════
     if (intent === 'GOAL_CREATION') {
         if (!pendingData) {
             return {
@@ -267,9 +160,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  ACTION: SET_DEADLINE — Goal deadline confirmation
-    // ═══════════════════════════════════════════════════════
     if (intent === 'ACTION_SET_DEADLINE') {
         const goalData = actionPayload?.pendingGoalData;
         if (!goalData) {
@@ -290,9 +180,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  GOAL_CONTRIBUTION — Amount prompt + goal selection
-    // ═══════════════════════════════════════════════════════
     if (intent === 'GOAL_CONTRIBUTION') {
         if (!pendingData || pendingData.type !== 'goal_contribution') {
             return {
@@ -350,9 +237,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  ACTION: GOAL_CONTRIBUTION_START — Goal list
-    // ═══════════════════════════════════════════════════════
     if (intent === 'ACTION_GOAL_CONTRIBUTION_START') {
         if (!activeGoals?.length) {
             return {
@@ -390,9 +274,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  ACTION: SELECT_GOAL
-    // ═══════════════════════════════════════════════════════
     if (intent === 'ACTION_SELECT_GOAL') {
         const goalTitle = actionPayload?.goalTitle ?? 'Hedef';
         return {
@@ -404,9 +285,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  GOAL_STATUS — Show goal progress
-    // ═══════════════════════════════════════════════════════
     if (intent === 'GOAL_STATUS') {
         if (!activeGoals?.length) {
             return {
@@ -431,9 +309,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  ANALYSIS / ACTION_ANALYSIS — Analysis results
-    // ═══════════════════════════════════════════════════════
     if (intent === 'ANALYSIS' || intent === 'ACTION_ANALYSIS') {
         // Handle action payloads for analysis sub-flows
         if (actionPayload?.action === 'route_savings') {
@@ -517,7 +392,6 @@ export const responderNode = async (state) => {
             };
         }
 
-        // Default Analysis Response
         if (!analysisResult || !analysisResult.hasData) {
             return {
                 response: {
@@ -563,9 +437,6 @@ export const responderNode = async (state) => {
         };
     }
 
-    // ═══════════════════════════════════════════════════════
-    //  Fallback
-    // ═══════════════════════════════════════════════════════
     return {
         response: {
             classification: 'UNKNOWN',
