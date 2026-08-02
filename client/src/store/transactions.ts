@@ -51,9 +51,15 @@ export async function fetchTransactions(limit = 100, offset = 0): Promise<{ succ
     }
 }
 
+let cachedCategories: Category[] | null = null;
+
 export async function fetchCategories(): Promise<{ success: boolean; data?: { categories: Category[] }; message?: string }> {
     try {
+        if (cachedCategories) {
+            return { success: true, data: { categories: cachedCategories } };
+        }
         const res = await apiFetch<{ success: boolean; categories: Category[] }>('/transactions/categories');
+        cachedCategories = res.categories;
         return {
             success: true,
             data: {

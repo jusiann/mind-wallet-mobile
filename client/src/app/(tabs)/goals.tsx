@@ -3,6 +3,7 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -15,12 +16,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDashboard } from '../../store/dashboard';
 import { Goal, createGoal, deleteGoalById, getGoals } from '../../store/goals';
-import { Pledge, fetchPledges } from '../../store/pledges';
+import { Pledge, fetchPledges, cancelPledge } from '../../store/pledges';
 import { COLORS } from '../../constants/theme';
 import { useAlert } from '../../constants/alert';
 import { useEngineStore } from '../../store/useEngineStore';
 import createStyles from '../../assets/styles/goals.styles';
 import { useCurrency } from '../../hooks/useCurrency';
+import { translateCat } from '../../constants/categories';
 import BottomSheetModal from '../../components/BottomSheetModal';
 import LoadingState from '../../components/tabs/LoadingState';
 import ErrorState from '../../components/tabs/ErrorState';
@@ -85,6 +87,7 @@ export default function GoalsScreen() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [aiInsight, setAiInsight] = useState<{ label: string; message: string } | null>(null);
+    const [pendingPledges, setPendingPledges] = useState<Pledge[]>([]);
     // goalId → pending pledge miktarlarının toplamı
     const [pendingPledgesByGoal, setPendingPledgesByGoal] = useState<Record<number, number>>({});
 
@@ -122,6 +125,7 @@ export default function GoalsScreen() {
                 });
                 fetchPledges('PENDING').then((res) => {
                     if (res.success) {
+                        setPendingPledges(res.data ?? []);
                         const map: Record<number, number> = {};
                         for (const p of res.data ?? []) {
                             map[p.goal_id] = (map[p.goal_id] ?? 0) + Number(p.amount);
@@ -182,24 +186,47 @@ export default function GoalsScreen() {
     }
 
     function handleDeleteGoal(goal: Goal) {
-        showAlert({
-            title: 'Hedefi Sil',
-            message: `"${goal.title}" silinsin mi?`,
-            confirm: {
-                label: 'Sil',
-                destructive: true,
-                onPress: async () => {
-                    const res = await deleteGoalById(goal.id);
-                    if (res.success) {
-                        useEngineStore.getState().markNeedsRefresh();
-                        setDetailGoal(null);
-                        loadGoals();
-                    } else {
-                        showAlert({ title: 'Hata', message: res.message ?? 'Hedef silinemedi.' });
+        Alert.alert(
+            'Hedefi Sil',
+            `"${goal.title}" silinsin mi?`,
+            [
+                { text: 'Vazgeç', style: 'cancel' },
+                {
+                    text: 'Sil',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const res = await deleteGoalById(goal.id);
+                        if (res.success) {
+                            useEngineStore.getState().markNeedsRefresh();
+                            setDetailGoal(null);
+                            loadGoals();
+                        } else {
+                            showAlert({ title: 'Hata', message: res.message ?? 'Hedef silinemedi.' });
+                        }
+                    },
+                }
+            ]
+        );
+    }
+
+    async function handleCancelPledge(pledge: Pledge) {
+        const res = await cancelPledge(pledge.id);
+        if (res.success) {
+            useEngineStore.getState().markNeedsRefresh();
+            loadGoals();
+            fetchPledges('PENDING').then((pRes) => {
+                if (pRes.success) {
+                    setPendingPledges(pRes.data ?? []);
+                    const map: Record<number, number> = {};
+                    for (const p of pRes.data ?? []) {
+                        map[p.goal_id] = (map[p.goal_id] ?? 0) + Number(p.amount);
                     }
-                },
-            },
-        });
+                    setPendingPledgesByGoal(map);
+                }
+            });
+        } else {
+            showAlert({ title: 'Hata', message: res.message ?? 'İptal edilemedi.' });
+        }
     }
 
     function handleAiAction() {
@@ -278,6 +305,27 @@ export default function GoalsScreen() {
                         <View style={styles.detailInfoRow}>
                             <Ionicons name='hourglass-outline' size={16} color={COLORS.textSecondary} />
                             <Text style={styles.detailInfoText}>{formatCurrency(detailRemaining)} kaldı</Text>
+                        </View>
+                    )}
+
+                    {pendingPledges.filter(p => p.goal_id === detailGoal.id).length > 0 && (
+                        <View style={{ marginTop: 24, width: '100%', paddingHorizontal: 28 }}>
+                            <Text style={{ fontFamily: 'HankenGrotesk_700Bold', fontSize: 16, color: COLORS.textPrimary, marginBottom: 12 }}>Bekleyen Taahhütler</Text>
+                            {pendingPledges.filter(p => p.goal_id === detailGoal.id).map(pledge => (
+                                <View key={pledge.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: COLORS.surfaceContainerLow, padding: 16, borderRadius: 16, marginBottom: 10 }}>
+                                    <View>
+                                        <Text style={{ fontFamily: 'HankenGrotesk_600SemiBold', fontSize: 13, color: COLORS.textSecondary, marginBottom: 4 }}>
+                                            {pledge.category_name ? `${translateCat(pledge.category_name)} tasarrufu` : 'Genel Tasarruf'}
+                                        </Text>
+                                        <Text style={{ fontFamily: 'HankenGrotesk_700Bold', fontSize: 20, color: COLORS.textPrimary }}>
+                                            {formatCurrency(pledge.amount)}
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity onPress={() => handleCancelPledge(pledge)} style={{ padding: 6, backgroundColor: '#FFEBEE', borderRadius: 8 }}>
+                                        <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
                         </View>
                     )}
 

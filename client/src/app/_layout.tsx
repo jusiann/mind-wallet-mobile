@@ -31,7 +31,7 @@ function SplashScreenController({ onReady }: { onReady: () => void }) {
 
         (async () => {
             try {
-                fetchExchangeRates().catch(() => {});
+                fetchExchangeRates().catch(() => { });
 
                 const refreshState = await tryRefreshToken();
                 if (!refreshState.authenticated) {

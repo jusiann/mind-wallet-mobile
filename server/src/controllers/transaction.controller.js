@@ -5,11 +5,14 @@ import ExcelJS from 'exceljs';
 import { invalidateContext } from '../services/engine/contextCache.js';
 
 const validateAmount = (amount) => {
-    const parsed = parseFloat(amount);
-    if (isNaN(parsed) || parsed <= 0)
+    if (amount === undefined || amount === null || amount === '')
+        return 'Amount is required.';
+    const strVal = String(amount).trim();
+    if (!/^\d+(\.\d{1,2})?$/.test(strVal))
+        return 'Amount must be a positive number with at most 2 decimal places.';
+    const parsed = parseFloat(strVal);
+    if (isNaN(parsed) || parsed <= 0 || !Number.isFinite(parsed))
         return 'Amount must be a positive number.';
-    if (!/^\d+(\.\d{1,2})?$/.test(String(parsed)))
-        return 'Amount must have at most 2 decimal places.';
     return null;
 };
 

@@ -5,46 +5,46 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://mind-wallet-mobile.
 
 export const API_ENDPOINTS = {
     AUTH: {
-        SIGN_UP: `${BASE_URL}/auth/signup`,
-        SIGN_IN: `${BASE_URL}/auth/signin`,
-        REFRESH_TOKEN: `${BASE_URL}/auth/refresh-token`,
-        LOGOUT: `${BASE_URL}/auth/logout`,
-        ME: `${BASE_URL}/auth/me`,
-        UPDATE_PROFILE: `${BASE_URL}/auth/me`,
-        CHANGE_PASSWORD: `${BASE_URL}/auth/change-password`,
-        DELETE_ACCOUNT: `${BASE_URL}/auth/delete-account`,
-        FORGOT_PASSWORD: `${BASE_URL}/auth/forgot-password`,
-        CHECK_RESET_CODE: `${BASE_URL}/auth/check-reset-code`,
-        RESET_PASSWORD: `${BASE_URL}/auth/reset-password`,
-        SET_PIN: `${BASE_URL}/auth/set-pin`,
-        VERIFY_PIN: `${BASE_URL}/auth/verify-pin`,
-        CHANGE_PIN: `${BASE_URL}/auth/change-pin`,
+        SIGN_UP: '/auth/signup',
+        SIGN_IN: '/auth/signin',
+        REFRESH_TOKEN: '/auth/refresh-token',
+        LOGOUT: '/auth/logout',
+        ME: '/auth/me',
+        UPDATE_PROFILE: '/auth/me',
+        CHANGE_PASSWORD: '/auth/change-password',
+        DELETE_ACCOUNT: '/auth/delete-account',
+        FORGOT_PASSWORD: '/auth/forgot-password',
+        CHECK_RESET_CODE: '/auth/check-reset-code',
+        RESET_PASSWORD: '/auth/reset-password',
+        SET_PIN: '/auth/set-pin',
+        VERIFY_PIN: '/auth/verify-pin',
+        CHANGE_PIN: '/auth/change-pin',
     },
     TRANSACTIONS: {
-        LIST: `${BASE_URL}/transactions`,
-        CREATE: `${BASE_URL}/transactions`,
-        CATEGORIES: `${BASE_URL}/transactions/categories`,
-        EXPORT: `${BASE_URL}/transactions/export`,
-        DETAIL: (id: number) => `${BASE_URL}/transactions/${id}`,
-        UPDATE: (id: number) => `${BASE_URL}/transactions/${id}`,
-        DELETE: (id: number) => `${BASE_URL}/transactions/${id}`,
+        LIST: '/transactions',
+        CREATE: '/transactions',
+        CATEGORIES: '/transactions/categories',
+        EXPORT: '/transactions/export',
+        DETAIL: (id: number) => `/transactions/${id}`,
+        UPDATE: (id: number) => `/transactions/${id}`,
+        DELETE: (id: number) => `/transactions/${id}`,
     },
     GOALS: {
-        LIST: `${BASE_URL}/goals`,
-        CREATE: `${BASE_URL}/goals`,
-        DETAIL: (id: number) => `${BASE_URL}/goals/${id}`,
-        UPDATE: (id: number) => `${BASE_URL}/goals/${id}`,
-        DELETE: (id: number) => `${BASE_URL}/goals/${id}`,
+        LIST: '/goals',
+        CREATE: '/goals',
+        DETAIL: (id: number) => `/goals/${id}`,
+        UPDATE: (id: number) => `/goals/${id}`,
+        DELETE: (id: number) => `/goals/${id}`,
     },
-    DASHBOARD: `${BASE_URL}/dashboard`,
+    DASHBOARD: '/dashboard',
     ENGINE: {
-        CHAT: `${BASE_URL}/engine/chat`,
-        ACTION: `${BASE_URL}/engine/action`,
+        CHAT: '/engine/chat',
+        ACTION: '/engine/action',
     },
     PLEDGES: {
-        LIST: `${BASE_URL}/pledges`,
-        RESOLVE: (id: number) => `${BASE_URL}/pledges/${id}/resolve`,
-        CANCEL: (id: number) => `${BASE_URL}/pledges/${id}/cancel`,
+        LIST: '/pledges',
+        RESOLVE: (id: number) => `/pledges/${id}/resolve`,
+        CANCEL: (id: number) => `/pledges/${id}/cancel`,
     },
 };
 
@@ -59,7 +59,11 @@ export async function apiFetch<T = unknown>(path: string, options: FetchOptions 
     if (token)
         headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+    const targetUrl = path.startsWith('http://') || path.startsWith('https://')
+        ? path
+        : `${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+
+    const res = await fetch(targetUrl, { ...options, headers });
 
     if (res.status === 401 && !options._retry) {
         const refreshToken = await getRefreshToken();
