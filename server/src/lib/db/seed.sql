@@ -17,9 +17,9 @@ INSERT INTO categories (name, is_essential, applicable_to) VALUES
     ('Cash', false, 'INCOME')
 ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO users (name, email, password, total_balance, monthly_income)
-VALUES ('Adil Efe', 'adilefe257@gmail.com', '$2b$10$08Y8dHq3MjBdqQU7udfS9.Z2wcTX0B3aRPB1wrcakP3KB56FXu6NG', 11991.00, 15000.00)
-ON CONFLICT (email) DO NOTHING;
+INSERT INTO users (name, email, password, pin_hash, total_balance, monthly_income)
+VALUES ('Adil Efe', 'adilefe257@gmail.com', '$2b$10$JDZTYu8pwIz8P6AmzBMpr.cwBCZY6QKdSmaOu41L/FUGkRa795RUm', '$2b$10$0pzk/HIsoCe5w1LFSosVCuZjNou4bDwdfBhS72rTbplJBcJWdo8he', 11991.00, 15000.00)
+ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password, pin_hash = EXCLUDED.pin_hash;
 
 DO $$
 BEGIN

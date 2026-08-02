@@ -78,3 +78,5 @@ CREATE INDEX IF NOT EXISTS idx_goals_user_status ON goals(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_goals_user_status_deadline ON goals(user_id, status, deadline ASC);
 CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(user_id, category_id);
 CREATE INDEX IF NOT EXISTS idx_pledges_user_status ON savings_pledges(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_recurring_active_date ON recurring_transactions(is_active, next_run_date);
+CREATE INDEX IF NOT EXISTS idx_pledges_composite ON savings_pledges(user_id, goal_id, status, baseline_month);
