@@ -1,3 +1,4 @@
+import { generateText } from '../../gemini.service.js';
 import { toTR, pickRandom, levenshtein, findGoalByTitle, buildCategoryButtons } from '../../../utils/engine.util.js';
 import {
     NAV_BUTTONS,
@@ -7,12 +8,6 @@ import {
     GOAL_STATUS_EXTRA_BUTTONS,
     GOAL_CONTRIB_CONFIRM_BUTTONS,
     CANCEL_BUTTONS,
-    CHITCHAT_MESSAGES,
-    OUT_OF_SCOPE_MESSAGES,
-    TX_START_MESSAGES,
-    GOAL_START_MESSAGES,
-    UNKNOWN_ACTION_MESSAGES,
-    FALLBACK_MESSAGES,
 } from '../../../constants/engine.constants.js';
 
 
@@ -25,46 +20,25 @@ export const responderNode = async (state) => {
         return { response: { ...response, buttons: response.buttons ?? NAV_BUTTONS } };
     }
 
-    if (intent === 'OUT_OF_SCOPE') {
-        return {
-            response: {
-                classification: 'OUT_OF_SCOPE',
-                message: pickRandom('oos', OUT_OF_SCOPE_MESSAGES),
-                buttons: [
-                    { id: 'oos_analyze', label: 'Bütçe Analizi', icon: 'pie-chart-outline', payload: { action: 'start_analysis' } },
-                    { id: 'oos_tx',      label: 'İşlem Ekle',     icon: 'wallet-outline',    payload: { action: 'start_transaction' } },
-                    { id: 'oos_goals',   label: 'Hedef Oluştur',  icon: 'flag-outline',      payload: { action: 'start_goal' } },
-                    { id: 'oos_tips',    label: 'Tavsiyeler',      icon: 'bulb-outline',      payload: { action: 'get_tips' } },
-                ],
-            },
-        };
-    }
+    if (['HELP', 'OUT_OF_SCOPE', 'CHITCHAT', 'CANCEL', 'ACTION_UNKNOWN', 'UNKNOWN'].includes(intent)) {
+        let prompt = `Kullanıcının niyeti: ${intent}
+Kullanıcının mesajı: "${input || intent}"
+Kullanıcının aktif hedefleri: ${activeGoals.map(g => g.title).join(', ') || 'Yok'}
 
-    if (intent === 'CHITCHAT') {
-        return {
-            response: {
-                classification: 'CHITCHAT',
-                message: pickRandom('chitchat', CHITCHAT_MESSAGES),
-                buttons: [
-                    { id: 'ch_analyze', label: 'Bütçe Analizi', icon: 'pie-chart-outline', payload: { action: 'start_analysis' } },
-                    { id: 'ch_tx',      label: 'İşlem Ekle',     icon: 'wallet-outline',    payload: { action: 'start_transaction' } },
-                    { id: 'ch_goals',   label: 'Hedef Oluştur',  icon: 'flag-outline',      payload: { action: 'start_goal' } },
-                    { id: 'ch_tips',    label: 'Tavsiyeler',      icon: 'bulb-outline',      payload: { action: 'get_tips' } },
-                ],
-            },
-        };
-    }
+Senin adın Mindy, sen bir finans asistanısın. 
+Kullanıcıya samimi, çok kısa (1-3 cümle) ve yönlendirici bir cevap ver. Markdown kullanma.
+- Niyet CHITCHAT veya OUT_OF_SCOPE ise: Sadece finansal konularda yardım edebileceğini söyle ve neler yapabildiğini kısaca hatırlat.
+- Niyet HELP ise: Neler yapabildiğini (harcama ekleme, analiz, hedef) anlat.
+- Niyet CANCEL ise: İşlemi iptal ettiğini ve başka ne yapabileceğini sor.
+- Niyet UNKNOWN ise: Anlayamadığını belirtip yönlendir.`;
 
-    if (intent === 'CANCEL') {
+        let llmMessage = await generateText(prompt, 'Şu an seni tam anlayamadım, finansal konularda yardımcı olabilirim.');
+
         return {
             response: {
-                classification: 'UNKNOWN',
-                message: pickRandom('cancel_intent', [
-                    'İptal edildi. Başka ne yapabilirim?',
-                    'Tamam, iptal ettim. Sana başka nasıl yardımcı olabilirim?',
-                    'İptal edildi! Başka bir işlem yapmak ister misin?'
-                ]),
-                buttons: NAV_BUTTONS,
+                classification: intent,
+                message: llmMessage,
+                buttons: [],
             },
         };
     }
@@ -73,7 +47,7 @@ export const responderNode = async (state) => {
         return {
             response: {
                 classification: 'TRANSACTION',
-                message: pickRandom('tx_start', TX_START_MESSAGES),
+                message: 'Ne kadar harcadın veya ne kadar gelir aldın?\n(Örn: "Markete 250 TL harcadım" veya "15.000 TL maaş yattı")',
                 buttons: [{ id: 'start_tx_cancel', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } }],
             },
         };
@@ -83,18 +57,8 @@ export const responderNode = async (state) => {
         return {
             response: {
                 classification: 'GOAL_CREATION',
-                message: pickRandom('goal_start', GOAL_START_MESSAGES),
+                message: 'Ne için ve ne kadar biriktirmek istiyorsun?\n(Örn: "Tatil için 15.000 TL biriktirmek istiyorum")',
                 buttons: [{ id: 'start_goal_cancel', label: 'İptal', icon: 'close-circle-outline', payload: { action: 'cancel' } }],
-            },
-        };
-    }
-
-    if (intent === 'ACTION_UNKNOWN') {
-        return {
-            response: {
-                classification: 'UNKNOWN',
-                message: pickRandom('unknown_action', UNKNOWN_ACTION_MESSAGES),
-                buttons: NAV_BUTTONS,
             },
         };
     }
@@ -402,7 +366,16 @@ export const responderNode = async (state) => {
             };
         }
 
-        const { deltas = [], detectedSavings = 0, message } = analysisResult;
+        let { deltas = [], detectedSavings = 0, message, subscriptions = [], cashFlow = null } = analysisResult;
+        
+        if (cashFlow && cashFlow.isWarning) {
+            message = `⚠️ Uyarı: Mevcut harcama hızınla (aylık projeksiyon: ${cashFlow.projectedTotal.toLocaleString('tr-TR')} TL) ay sonunu ${cashFlow.deficit.toLocaleString('tr-TR')} TL açıkla eksi bakiyede kapatabilirsin.\n\n` + message;
+        }
+
+        if (subscriptions.length > 0) {
+            message += `\n\nAyrıca ${subscriptions.map(s => `"${s.name}" (${s.amount} TL)`).join(', ')} gibi düzenli ödemeler tespit ettim. Bunları kullanmıyorsan iptal ederek hedeflerine aktarabilirsin.`;
+        }
+
         const catButtons = buildCategoryButtons(deltas);
         const hasGoals = activeGoals?.length > 0;
         const hasSavings = detectedSavings > 0;
@@ -437,11 +410,18 @@ export const responderNode = async (state) => {
         };
     }
 
+    let fallbackPrompt = `Kullanıcının niyeti: UNKNOWN
+Kullanıcının mesajı: "${input || intent}"
+Senin adın Mindy, finans asistanısın. Kullanıcının mesajını tam anlayamadın.
+Ona ne istediğini sormak ve yönlendirmek için 1-2 cümlelik kısa bir mesaj yaz.`;
+    
+    let fallbackMessage = await generateText(fallbackPrompt, 'Bu işlemi anlayamadım. İşlem eklemek istersen "Taksi 300 TL" gibi yazabilirsin.');
+
     return {
         response: {
             classification: 'UNKNOWN',
-            message: pickRandom('fallback', FALLBACK_MESSAGES),
-            buttons: NAV_BUTTONS,
+            message: fallbackMessage,
+            buttons: [],
         },
     };
 };

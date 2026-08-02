@@ -9,8 +9,6 @@ import {
     NAV_BUTTONS,
     TX_SUCCESS_BUTTONS,
     CANCEL_BUTTONS,
-    CANCEL_MESSAGES,
-    DONE_MESSAGES,
 } from '../constants/engine.constants.js';
 
 
@@ -40,11 +38,11 @@ export const action = async (req, res) => {
         const chatHistory = Array.isArray(history) ? history.slice(0, 20) : [];
 
         if (buttonPayload.action === 'cancel') {
-            return quickReply(res, pickRandom('cancel', CANCEL_MESSAGES), CANCEL_BUTTONS);
+            return quickReply(res, 'İptal edildi. Başka bir işlem yapmak istersen bana yazabilirsin.', CANCEL_BUTTONS);
         }
 
         if (buttonPayload.action === 'done') {
-            return quickReply(res, pickRandom('done', DONE_MESSAGES), null);
+            return quickReply(res, 'Görüşmek üzere!', null);
         }
 
         if (buttonPayload.action === 'confirm_transaction') {

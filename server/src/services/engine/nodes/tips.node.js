@@ -1,6 +1,5 @@
 import { generateText } from '../../gemini.service.js';
 import { toTR } from '../../../utils/engine.util.js';
-import { NAV_BUTTONS } from '../../../constants/engine.constants.js';
 
 // ═══════════════════════════════════════════════════════════════
 //  Tips Node — LangGraph Node Function
@@ -42,11 +41,39 @@ Kurallar:
 
     const tips = await generateText(prompt, null);
 
+    const activeGoals = context.activeGoals ?? [];
+    const buttons = [];
+    
+    activeGoals.slice(0, 2).forEach((g, i) => {
+        buttons.push({
+            id: `tip_goal_contrib_${i}`,
+            label: `"${g.title}" hedefine ekle`,
+            icon: 'cash-outline',
+            payload: { action: 'select_goal', goalId: g.id, goalTitle: g.title }
+        });
+    });
+
+    if (activeGoals.length === 0) {
+        buttons.push({
+            id: 'tip_create_goal',
+            label: 'Tasarruf Hedefi Oluştur',
+            icon: 'flag-outline',
+            payload: { action: 'start_goal' }
+        });
+    }
+
+    buttons.push({
+        id: 'tip_analyze',
+        label: 'Bütçe Analizimi Gör',
+        icon: 'pie-chart-outline',
+        payload: { action: 'start_analysis' }
+    });
+
     return {
         response: {
             classification: 'TIPS',
             message: `${cat ? `${catTR} harcamalarını azaltmak için öneriler` : 'Tasarruf önerileri'}:\n\n${tips ?? 'Öneri üretilemedi, lütfen tekrar dene.'}`,
-            buttons: NAV_BUTTONS,
+            buttons,
         },
     };
 };

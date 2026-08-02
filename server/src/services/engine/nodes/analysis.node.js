@@ -1,10 +1,61 @@
 import { toTR } from '../../../utils/engine.util.js';
 
 // ═══════════════════════════════════════════════════════════════
-//  Deterministic category delta computation
+//  Deterministic category delta computation & forecasting
 // ═══════════════════════════════════════════════════════════════
 
-function computeCategoryDeltas(currentMonthTx, previousMonthTx, categories) {
+function findSubscriptions(currentMonthTx, previousMonthTx) {
+    const currentExp = currentMonthTx.filter(t => t.type === 'EXPENSE');
+    const prevExp = previousMonthTx.filter(t => t.type === 'EXPENSE');
+    const subscriptions = [];
+
+    for (const curr of currentExp) {
+        const match = prevExp.find(p => 
+            p.category_id === curr.category_id && 
+            Math.abs(Number(p.amount) - Number(curr.amount)) < 10 &&
+            (curr.category_name?.toLowerCase().match(/(abonelik|eğlence|spor|dijital|fatura)/i) || 
+             curr.description?.toLowerCase().match(/(netflix|spotify|youtube|gym|amazon|premium|macfit|exxen|blutv)/i))
+        );
+        
+        if (match && !subscriptions.find(s => s.category_id === curr.category_id && Math.abs(Number(s.amount) - Number(curr.amount)) < 10)) {
+             subscriptions.push({
+                 category_id: curr.category_id,
+                 name: curr.description || curr.category_name || 'Abonelik',
+                 amount: curr.amount
+             });
+        }
+    }
+    return subscriptions;
+}
+
+function computeCashFlowForecast(currentMonthTx, user) {
+    if (!user || !user.monthly_income) return null;
+    
+    const currentExp = currentMonthTx.filter(t => t.type === 'EXPENSE');
+    const totalSpent = currentExp.reduce((s, t) => s + Number(t.amount), 0);
+    
+    const now = new Date();
+    const currentDay = now.getDate();
+    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    
+    if (currentDay < 3) return null; // Too early to forecast
+    
+    const dailyBurnRate = totalSpent / currentDay;
+    const projectedTotal = dailyBurnRate * daysInMonth;
+    
+    const income = Number(user.monthly_income);
+    if (projectedTotal > income * 0.9) {
+        return {
+            isWarning: projectedTotal > income,
+            projectedTotal: Math.round(projectedTotal),
+            burnRate: Math.round(dailyBurnRate),
+            deficit: Math.round(projectedTotal - income)
+        };
+    }
+    return null;
+}
+
+function computeCategoryDeltas(currentMonthTx, previousMonthTx, categories, pledges = []) {
     const nonEssentialIds = new Set(categories.filter((c) => !c.is_essential).map((c) => c.id));
     const sumByCategory = (txs, catId) =>
         txs
@@ -14,11 +65,20 @@ function computeCategoryDeltas(currentMonthTx, previousMonthTx, categories) {
     const categoryIds = [...new Set([...currentMonthTx.map((t) => t.category_id), ...previousMonthTx.map((t) => t.category_id)])]
         .filter((id) => nonEssentialIds.has(Number(id)));
 
+    const getPledgedAmount = (catId) => {
+        const pledge = pledges.find(p => String(p.category_id) === String(catId));
+        return pledge ? Number(pledge.total_pledged) : 0;
+    };
+
     const deltas = categoryIds
         .map((catId) => {
             const currentSpent = sumByCategory(currentMonthTx, catId);
             const previousSpent = sumByCategory(previousMonthTx, catId);
-            const delta = currentSpent - previousSpent;
+            let delta = currentSpent - previousSpent;
+            
+            const pledged = getPledgedAmount(catId);
+            delta = Math.max(0, delta - pledged);
+
             const catName =
                 currentMonthTx.find((t) => String(t.category_id) === String(catId))?.category_name ??
                 previousMonthTx.find((t) => String(t.category_id) === String(catId))?.category_name ??
@@ -33,7 +93,7 @@ function computeCategoryDeltas(currentMonthTx, previousMonthTx, categories) {
     return { deltas, detectedSavings };
 }
 
-function fallbackSavings(currentMonthTx, categories) {
+function fallbackSavings(currentMonthTx, categories, pledges = []) {
     const nonEssentialIds = new Set(categories.filter((c) => !c.is_essential).map((c) => c.id));
     const nonEssentialTotal = currentMonthTx
         .filter((t) => t.type === 'EXPENSE' && nonEssentialIds.has(Number(t.category_id)))
@@ -48,18 +108,30 @@ function fallbackSavings(currentMonthTx, categories) {
         byCategory[key].total += Number(t.amount);
     }
 
-    const deltas = Object.entries(byCategory)
-        .sort(([, a], [, b]) => b.total - a.total)
-        .slice(0, 3)
-        .map(([catId, { name, total }]) => ({
-            catId: Number(catId),
-            name,
-            currentSpent: total,
-            previousSpent: 0,
-            delta: Math.round(total * 0.2),
-        }));
+    const getPledgedAmount = (catId) => {
+        const pledge = pledges.find(p => String(p.category_id) === String(catId));
+        return pledge ? Number(pledge.total_pledged) : 0;
+    };
 
-    return { deltas, detectedSavings: savings, isFallback: true };
+    const deltas = Object.entries(byCategory)
+        .map(([catId, { name, total }]) => {
+            const potentialSavings = Math.round(total * 0.2);
+            const pledged = getPledgedAmount(catId);
+            const delta = Math.max(0, potentialSavings - pledged);
+            return {
+                catId: Number(catId),
+                name,
+                currentSpent: total,
+                previousSpent: 0,
+                delta,
+            };
+        })
+        .filter((d) => d.delta > 0)
+        .sort((a, b) => b.delta - a.delta)
+        .slice(0, 3);
+    const totalSavings = Math.round(deltas.reduce((s, d) => s + d.delta, 0));
+
+    return { deltas, detectedSavings: totalSavings, isFallback: true };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -71,7 +143,9 @@ export const analysisNode = async (state) => {
     const { currentMonthTx = [], previousMonthTx = [], categories = [], activeGoals = [] } = context;
 
     const currentExpenses = currentMonthTx.filter((t) => t.type === 'EXPENSE');
-    if (currentExpenses.length === 0) {
+    const previousExpenses = previousMonthTx.filter((t) => t.type === 'EXPENSE');
+
+    if (currentExpenses.length === 0 && previousExpenses.length === 0) {
         return {
             analysisResult: {
                 deltas: [],
@@ -83,18 +157,22 @@ export const analysisNode = async (state) => {
         };
     }
 
-    const hasPreviousData = previousMonthTx.filter((t) => t.type === 'EXPENSE').length > 0;
+    const hasPreviousData = previousExpenses.length > 0;
     let deltas, detectedSavings, isFallback;
+    let targetMonthTx = currentExpenses.length > 0 ? currentMonthTx : previousMonthTx;
 
-    if (hasPreviousData) {
-        ({ deltas, detectedSavings } = computeCategoryDeltas(currentMonthTx, previousMonthTx, categories));
+    if (currentExpenses.length > 0 && hasPreviousData) {
+        ({ deltas, detectedSavings } = computeCategoryDeltas(currentMonthTx, previousMonthTx, categories, context.pledges));
         isFallback = false;
     } else {
-        ({ deltas, detectedSavings, isFallback } = fallbackSavings(currentMonthTx, categories));
+        ({ deltas, detectedSavings, isFallback } = fallbackSavings(targetMonthTx, categories, context.pledges));
     }
 
     let message;
-    if (isFallback) {
+    if (currentExpenses.length === 0) {
+        const totalPreviousMonth = previousExpenses.reduce((s, t) => s + Number(t.amount), 0);
+        message = `Bu ay henüz harcama verisi yok. Geçen ay zorunlu olmayan kategorilerde toplam ${totalPreviousMonth.toLocaleString('tr-TR')} TL harcandı. Önerilen tasarruf: ${detectedSavings.toLocaleString('tr-TR')} TL (%20).`;
+    } else if (isFallback) {
         const totalCurrentMonth = currentExpenses.reduce((s, t) => s + Number(t.amount), 0);
         message = `Önceki ay verisi yok; bu ay zorunlu olmayan kategorilerde toplam ${totalCurrentMonth.toLocaleString('tr-TR')} TL harcandı. Önerilen tasarruf: ${detectedSavings.toLocaleString('tr-TR')} TL (%20).`;
     } else {
@@ -102,6 +180,9 @@ export const analysisNode = async (state) => {
             ? `Bu ay zorunlu olmayan bazı harcamalarında artış var. Toplamda ${detectedSavings.toLocaleString('tr-TR')} TL tasarruf edebilirsin.`
             : `Bu ay harcamaların geçen ayla benzer, tespit edilen anlamlı artış yok. Harika gidiyorsun!`;
     }
+
+    const subscriptions = findSubscriptions(currentMonthTx, previousMonthTx);
+    const cashFlow = computeCashFlowForecast(currentMonthTx, context.user);
 
     return {
         analysisResult: {
@@ -112,6 +193,8 @@ export const analysisNode = async (state) => {
             message,
             activeGoals,
             input,
+            subscriptions,
+            cashFlow
         },
     };
 };

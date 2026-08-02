@@ -25,6 +25,9 @@ const ANALYSIS_FAST = /(?:analiz|nasıl\s*gidiy|tasarruf\s*(?:öner|tavsiye)|bü
 // CHITCHAT — selamlama / teşekkür
 const CHITCHAT_FAST = /^\s*(?:selam|merhaba|hey|iyi\s*(?:günler|akşamlar|sabahlar|geceler)|günaydın|nasılsın|naber|ne\s*haber|teşekkür(?:ler)?|sağ\s*ol|eyvallah|görüşürüz|hoşça\s*kal|tamam|anladım|ok|tamamdır|peki)\s*[!.?]*$/i;
 
+// HELP — neler yapabilirsin / yardım
+const HELP_FAST = /(?:ne(?:ler)?\s*yapa|yardım|işe\s*yarar|nasıl\s*kullan|yetenek|seçenek|kimsin|özellik)/i;
+
 // CANCEL — iptal / vazgeçme
 const CANCEL_FAST = /^\s*(?:iptal|vazgeç|bırak|boşver(?:dim)?|gerek\s*yok)\s*[!.?]*$/i;
 
@@ -55,6 +58,7 @@ Categories:
 - GOAL_STATUS: Asking about goal progress ("how are my goals?", "how much saved?", etc.)
 - ANALYSIS: Spending analysis, budget review, monthly summary, category breakdown
 - TIPS: Saving tips, financial advice, budget optimization suggestions
+- HELP: Asking what the bot can do, its capabilities, or how to use it ("neler yapabilirsin", "yardım", "ne işe yararsın")
 - CHITCHAT: Greetings, thanks, small talk directly about the assistant
 - OUT_OF_SCOPE: Anything NOT related to personal finance, budgeting, saving, or financial goals (weather, sports, programming, cooking, politics, general knowledge, math problems, etc.)
 ${contextBlock}
@@ -68,6 +72,7 @@ Message: "${input}"`;
         if (upper.includes('GOAL_STATUS')) return 'GOAL_STATUS';
         if (upper.includes('TRANSACTION')) return 'TRANSACTION';
         if (upper.includes('TIPS')) return 'TIPS';
+        if (upper.includes('HELP')) return 'HELP';
         if (upper.includes('CHITCHAT')) return 'CHITCHAT';
         if (upper.includes('OUT_OF_SCOPE')) return 'OUT_OF_SCOPE';
         if (upper.includes('ANALYSIS')) return 'ANALYSIS';
@@ -98,6 +103,7 @@ export const intentNode = async (state) => {
     }
 
     // ── Tier 1: Regex fast-path (no Gemini call) ──
+    if (HELP_FAST.test(input)) return { intent: 'HELP' };
     if (CANCEL_FAST.test(input)) return { intent: 'CANCEL' };
     if (CHITCHAT_FAST.test(input)) return { intent: 'CHITCHAT' };
     if (TIPS_FAST.test(input) && !AMOUNT_PRESENT.test(input)) return { intent: 'TIPS' };

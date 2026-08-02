@@ -53,12 +53,14 @@ const withRetry = async (fn, retries = 3, baseDelayMs = 500) => {
 // ═══════════════════════════════════════════════════════════════
 
 const promptCache = new Map();
-const PROMPT_CACHE_TTL_MS = 60_000; // 1 minute
+const PROMPT_CACHE_TTL_MS = 60_000;
 const PROMPT_CACHE_MAX_SIZE = 50;
 
 function getCachedResponse(prompt) {
     const entry = promptCache.get(prompt);
     if (entry && (Date.now() - entry.ts) < PROMPT_CACHE_TTL_MS) {
+        promptCache.delete(prompt);
+        promptCache.set(prompt, entry);
         return entry.value;
     }
     if (entry) promptCache.delete(prompt);
@@ -66,7 +68,6 @@ function getCachedResponse(prompt) {
 }
 
 function setCachedResponse(prompt, value) {
-    // Evict oldest if cache is full
     if (promptCache.size >= PROMPT_CACHE_MAX_SIZE) {
         const firstKey = promptCache.keys().next().value;
         promptCache.delete(firstKey);
