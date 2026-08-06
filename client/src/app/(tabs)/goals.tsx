@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -253,10 +253,7 @@ export default function GoalsScreen() {
                         <View style={styles.spacer} />
                     </View>
 
-                    <View style={[styles.detailIconWrap, detailIsCompleted && styles.detailIconWrapCompleted, detailIsExpired && styles.detailIconWrapExpired]}>
-                        <Ionicons name='flag' size={32} color={COLORS.white} />
-                    </View>
-                    <Text style={styles.detailGoalName}>{detailGoal.title}</Text>
+                    <Text style={[styles.detailGoalName, { marginTop: 20 }]}>{detailGoal.title}</Text>
                     {(detailGoal.status !== 'ACTIVE' || detailIsExpired) && (
                         <View style={[
                             styles.detailStatusBadge,
@@ -431,17 +428,21 @@ export default function GoalsScreen() {
                             />
                         </View>
                     ) : (
-                        goals.map((goal) => {
-                            const pendingPledge = pendingPledgesByGoal[goal.id] ?? 0;
-                            return (
-                                <GoalCard
-                                    key={goal.id}
-                                    goal={goal}
-                                    onPress={() => setDetailGoal(goal)}
-                                    pendingPledgeAmount={pendingPledge}
-                                />
-                            );
-                        })
+                        <View style={styles.goalsCardGroup}>
+                            {goals.map((goal, idx) => {
+                                const pendingPledge = pendingPledgesByGoal[goal.id] ?? 0;
+                                return (
+                                    <Fragment key={goal.id}>
+                                        <GoalCard
+                                            goal={goal}
+                                            onPress={() => setDetailGoal(goal)}
+                                            pendingPledgeAmount={pendingPledge}
+                                        />
+                                        {idx < goals.length - 1 && <View style={styles.goalSeparator} />}
+                                    </Fragment>
+                                );
+                            })}
+                        </View>
                     )}
                 </ScrollView>
             )}

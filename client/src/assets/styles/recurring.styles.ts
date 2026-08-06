@@ -40,7 +40,7 @@ const createStyles = (COLORS: any) =>
         },
         scroll: {
             padding: 20,
-            paddingBottom: 40,
+            paddingBottom: 100,
         },
         emptyCard: {
             backgroundColor: COLORS.white,
@@ -50,6 +50,13 @@ const createStyles = (COLORS: any) =>
             justifyContent: 'center',
             gap: 12,
             marginTop: 20,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.04,
+            shadowRadius: 14,
+            elevation: 3,
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.02)',
         },
         emptyTitle: {
             fontFamily: 'HankenGrotesk_600SemiBold',
@@ -66,8 +73,15 @@ const createStyles = (COLORS: any) =>
         recCard: {
             backgroundColor: COLORS.white,
             borderRadius: 24,
-            padding: 16,
+            padding: 20,
             marginBottom: 12,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.04,
+            shadowRadius: 14,
+            elevation: 3,
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.02)',
         },
         recCardInactive: {
             opacity: 0.6,

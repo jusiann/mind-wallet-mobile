@@ -22,6 +22,13 @@ const createStyles = (COLORS: any) =>
             alignItems: 'flex-start',
             marginBottom: 4,
             width: '100%',
+            shadowColor: COLORS.black,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.15,
+            shadowRadius: 16,
+            elevation: 5,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.05)',
         },
         welcomeHeaderRow: {
             flexDirection: 'row',
@@ -210,7 +217,7 @@ const createStyles = (COLORS: any) =>
             gap: 10,
             paddingHorizontal: 16,
             paddingTop: 12,
-            paddingBottom: Platform.OS === 'android' ? 20 : 14,
+            paddingBottom: 100,
             backgroundColor: COLORS.background,
         },
         inputField: {

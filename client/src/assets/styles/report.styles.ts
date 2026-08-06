@@ -34,7 +34,7 @@ const createStyles = (COLORS: any) =>
         },
         scroll: {
             padding: 20,
-            paddingBottom: 40,
+            paddingBottom: 100,
             gap: 16,
         },
         monthSelector: {
@@ -57,8 +57,15 @@ const createStyles = (COLORS: any) =>
         card: {
             backgroundColor: COLORS.white,
             borderRadius: 24,
-            padding: 20,
+            padding: 24,
             gap: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.04,
+            shadowRadius: 14,
+            elevation: 3,
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.02)',
         },
         cardTitle: {
             fontFamily: 'HankenGrotesk_600SemiBold',

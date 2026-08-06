@@ -52,7 +52,7 @@ const createStyles = (COLORS: any) =>
         },
         listContent: {
             paddingHorizontal: 20,
-            paddingBottom: 24,
+            paddingBottom: 100,
         },
         quickActionsRow: {
             flexDirection: 'row',
@@ -88,14 +88,23 @@ const createStyles = (COLORS: any) =>
             marginBottom: 8,
             letterSpacing: 0.3,
         },
-        txRow: {
-            flexDirection: 'row',
-            alignItems: 'center',
+        dayCard: {
             backgroundColor: COLORS.white,
-            borderRadius: 16,
-            padding: 14,
-            marginBottom: 8,
-            gap: 12,
+            borderRadius: 24,
+            marginBottom: 16,
+            shadowColor: COLORS.black,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.04,
+            shadowRadius: 14,
+            elevation: 3,
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.02)',
+            overflow: 'hidden',
+        },
+        txSeparator: {
+            height: 1,
+            backgroundColor: COLORS.border,
+            marginHorizontal: 16,
         },
         txIcon: {
             width: 36,

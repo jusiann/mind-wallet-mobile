@@ -29,7 +29,7 @@ const createStyles = (COLORS: any) =>
         scroll: {
             padding: 20,
             gap: 16,
-            paddingBottom: 20,
+            paddingBottom: 100,
         },
         avatarSection: {
             alignItems: 'center',
@@ -65,14 +65,16 @@ const createStyles = (COLORS: any) =>
         },
         card: {
             backgroundColor: COLORS.white,
-            borderRadius: 16,
-            padding: 20,
-            gap: 14,
+            borderRadius: 24,
+            padding: 24,
+            gap: 16,
             shadowColor: COLORS.black,
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.05,
-            shadowRadius: 4,
-            elevation: 2,
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.04,
+            shadowRadius: 14,
+            elevation: 3,
+            borderWidth: 1,
+            borderColor: 'rgba(0,0,0,0.02)',
         },
         cardTitle: {
             fontFamily: 'HankenGrotesk_600SemiBold',

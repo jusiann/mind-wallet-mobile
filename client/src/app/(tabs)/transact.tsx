@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -62,7 +62,7 @@ function formatTime(iso: string) {
 }
 
 type Enriched = Transaction & { catMeta: { tr: string; icon: IoniconName } };
-type Section = { title: string; data: Enriched[] };
+type Section = { title: string; data: Enriched[][] };
 
 function buildSections(transactions: Transaction[], cats: Category[]): Section[] {
     const catMap = new Map(cats.map((c) => [c.id, c]));
@@ -71,8 +71,8 @@ function buildSections(transactions: Transaction[], cats: Category[]): Section[]
         return {
             ...tx,
             catMeta: cat
-                ? (CAT_META[cat.name] ?? { tr: cat.name, icon: 'wallet-outline' as IoniconName })
-                : { tr: 'Diğer', icon: 'wallet-outline' as IoniconName },
+                ? (CAT_META[cat.name] ?? { tr: cat.name, icon: 'ellipsis-horizontal-outline' as IoniconName })
+                : { tr: 'Diğer', icon: 'ellipsis-horizontal-outline' as IoniconName },
         };
     });
     const groups = new Map<string, Enriched[]>();
@@ -87,7 +87,7 @@ function buildSections(transactions: Transaction[], cats: Category[]): Section[]
             new Date(b.transaction_timestamp).getTime() - new Date(a.transaction_timestamp).getTime()
         );
     }
-    return Array.from(groups.entries()).map(([title, data]) => ({ title, data }));
+    return Array.from(groups.entries()).map(([title, data]) => ({ title, data: [data] }));
 }
 
 export default function TransactScreen() {
@@ -300,7 +300,7 @@ export default function TransactScreen() {
                     {categories
                         .filter((c) => c.applicable_to === addType)
                         .map((cat) => {
-                            const meta = CAT_META[cat.name] ?? { tr: cat.name, icon: 'wallet-outline' as IoniconName };
+                            const meta = CAT_META[cat.name] ?? { tr: cat.name, icon: 'ellipsis-horizontal-outline' as IoniconName };
                             const selected = addSelectedCatId === cat.id;
                             return (
                                 <TouchableOpacity
@@ -485,8 +485,17 @@ export default function TransactScreen() {
                     renderSectionHeader={({ section }) => (
                         <Text style={styles.sectionHeader}>{section.title}</Text>
                     )}
-                    renderItem={({ item }) => (
-                        <TransactionRow tx={item} meta={item.catMeta} onPress={() => setDetailTx(item)} />
+                    renderItem={({ item: group }) => (
+                        <View style={styles.dayCard}>
+                            {Array.isArray(group) ? group.map((tx, idx) => (
+                                <Fragment key={tx.id}>
+                                    <TransactionRow tx={tx} meta={tx.catMeta} onPress={() => setDetailTx(tx)} />
+                                    {idx < group.length - 1 && <View style={styles.txSeparator} />}
+                                </Fragment>
+                            )) : (
+                                <TransactionRow tx={group as any} meta={(group as any).catMeta} onPress={() => setDetailTx(group as any)} />
+                            )}
+                        </View>
                     )}
                 />
             )}

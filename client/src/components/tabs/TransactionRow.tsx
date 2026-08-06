@@ -42,11 +42,9 @@ const styles = StyleSheet.create({
     txRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: COLORS.white,
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 8,
+        padding: 16,
         gap: 12,
+        backgroundColor: COLORS.white,
     },
     txIcon: {
         width: 36,

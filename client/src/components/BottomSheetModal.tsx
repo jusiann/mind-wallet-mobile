@@ -64,16 +64,26 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
         });
     }, [fadeAnim, translateY, onClose]);
 
+    const animateOutRef = useRef(animateOut);
     useEffect(() => {
-        if (visible) {
+        animateOutRef.current = animateOut;
+    }, [animateOut]);
+
+    const handleClose = useCallback(() => {
+        animateOutRef.current();
+    }, []);
+
+
+    useEffect(() => {
+        if (visible && !showModal) {
             isClosingRef.current = false;
             fadeAnim.setValue(0);
             translateY.setValue(SCREEN_HEIGHT);
             setShowModal(true);
-        } else if (showModal) {
-            animateOut();
+        } else if (!visible && showModal) {
+            animateOutRef.current();
         }
-    }, [visible, showModal, animateOut, fadeAnim, translateY]);
+    }, [visible, showModal, fadeAnim, translateY]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -121,11 +131,11 @@ export default function BottomSheetModal({ visible, onClose, children }: Props) 
             animationType="none"
             hardwareAccelerated
             onShow={animateIn}
-            onRequestClose={() => animateOutRef.current()}
+            onRequestClose={handleClose}
         >
             <View style={styles.container}>
                 {/* Dim backdrop */}
-                <TouchableWithoutFeedback onPress={() => animateOutRef.current()}>
+                <TouchableWithoutFeedback onPress={handleClose}>
                     <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
                 </TouchableWithoutFeedback>
 

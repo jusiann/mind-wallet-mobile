@@ -55,7 +55,7 @@ const createStyles = (COLORS: any) =>
         scroll: {
             paddingHorizontal: 20,
             paddingTop: 12,
-            paddingBottom: 32,
+            paddingBottom: 100,
             gap: 20,
         },
         topSection: {
@@ -223,7 +223,7 @@ const createStyles = (COLORS: any) =>
         },
         actionCard: {
             flex: 1,
-            borderRadius: 20,
+            borderRadius: 24,
             paddingVertical: 20,
             alignItems: 'center',
             gap: 10,
@@ -287,9 +287,9 @@ const createStyles = (COLORS: any) =>
         goalCard: {
             flex: 1,
             backgroundColor: COLORS.white,
-            borderRadius: 16,
-            padding: 20,
-            gap: 10,
+            borderRadius: 24,
+            padding: 24,
+            gap: 12,
             shadowColor: COLORS.black,
             shadowOffset: { width: 0, height: 1 },
             shadowOpacity: 0.05,
@@ -308,33 +308,43 @@ const createStyles = (COLORS: any) =>
         },
         goalTitle: {
             fontFamily: 'HankenGrotesk_600SemiBold',
-            fontSize: 18,
+            fontSize: 16,
             color: COLORS.textPrimary,
         },
-        goalPct: {
+        goalAmountsRow: {
+            flexDirection: 'row',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            marginBottom: 2,
+        },
+        goalAmountsLeft: {
+            flexDirection: 'row',
+            alignItems: 'baseline',
+        },
+        goalCurrent: {
             fontFamily: 'HankenGrotesk_700Bold',
-            fontSize: 13,
-            color: COLORS.primary,
+            fontSize: 17,
+            color: COLORS.textPrimary,
         },
-        progressTrack: {
-            height: 5,
-            backgroundColor: COLORS.surfaceContainerHigh,
-            borderRadius: 3,
-            overflow: 'hidden',
-        },
-        progressFill: {
-            height: 5,
-            backgroundColor: COLORS.primary,
-            borderRadius: 3,
-        },
-        goalAmounts: {
+        goalTarget: {
             fontFamily: 'HankenGrotesk_400Regular',
             fontSize: 12,
             color: COLORS.textSecondary,
         },
+        progressTrack: {
+            height: 10,
+            backgroundColor: COLORS.surfaceContainerHigh,
+            borderRadius: 5,
+            overflow: 'hidden',
+        },
+        progressFill: {
+            height: 10,
+            backgroundColor: COLORS.primary,
+            borderRadius: 5,
+        },
         txCard: {
             backgroundColor: COLORS.white,
-            borderRadius: 16,
+            borderRadius: 24,
             overflow: 'hidden',
             shadowColor: COLORS.black,
             shadowOffset: { width: 0, height: 1 },
@@ -345,13 +355,13 @@ const createStyles = (COLORS: any) =>
         txSeparator: {
             height: 1,
             backgroundColor: COLORS.border,
-            marginHorizontal: 14,
+            marginHorizontal: 16,
         },
         txItem: {
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 12,
-            padding: 14,
+            gap: 14,
+            padding: 16,
         },
         txIcon: {
             width: 24,

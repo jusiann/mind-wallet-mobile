@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { DashboardData, getDashboard } from '../../store/dashboard';
 import { CategorySpend, fetchMonthlyExpensesByCategory } from '../../store/transactions';
-import { translateCat } from '../../constants/categories';
+import { translateCat, CAT_META } from '../../constants/categories';
 import { COLORS } from '../../constants/theme';
 import { getUserInitials } from '../../store/auth';
 import { useEngineStore } from '../../store/useEngineStore';
@@ -291,9 +291,12 @@ export default function DashboardScreen() {
                                                     })}
                                                 </Text>
                                             </View>
-                                            <Text style={styles.goalAmounts}>
-                                                {formatCurrency(goal.current_amount)} / {formatCurrency(goal.target_amount)}
-                                            </Text>
+                                            <View style={styles.goalAmountsRow}>
+                                                <View style={styles.goalAmountsLeft}>
+                                                    <Text style={styles.goalCurrent}>{formatCurrencyShort(goal.current_amount)}</Text>
+                                                    <Text style={styles.goalTarget}> / {formatCurrencyShort(goal.target_amount)}</Text>
+                                                </View>
+                                            </View>
                                             <View style={styles.progressTrack}>
                                                 <View
                                                     style={[
@@ -302,7 +305,6 @@ export default function DashboardScreen() {
                                                     ]}
                                                 />
                                             </View>
-                                            <Text style={styles.goalPct}>%{goal.progress_pct.toFixed(0)}</Text>
                                         </View>
                                     </View>
                                 ))}
@@ -346,7 +348,7 @@ export default function DashboardScreen() {
                                     <View style={styles.txItem}>
                                         <View style={styles.txIcon}>
                                             <Ionicons
-                                                name={tx.type === 'INCOME' ? 'arrow-down-outline' : 'arrow-up-outline'}
+                                                name={tx.category_name && CAT_META[tx.category_name] ? CAT_META[tx.category_name].icon : 'ellipsis-horizontal-outline'}
                                                 size={18}
                                                 color={COLORS.textPrimary}
                                             />

@@ -24,33 +24,36 @@ export default function GoalCard({ goal, onPress, pendingPledgeAmount = 0 }: Pro
             activeOpacity={0.85}
         >
             <View style={styles.goalHeader}>
-                <View style={[styles.goalIconWrap, isCompleted && styles.goalIconWrapCompleted, isExpired && styles.goalIconWrapExpired]}>
-                    <Ionicons name="flag" size={15} color={isCompleted || isExpired ? COLORS.white : COLORS.white} />
+                <View style={styles.goalHeaderContent}>
+                    <Text style={styles.goalTitle} numberOfLines={1}>
+                        {goal.title}
+                    </Text>
                 </View>
-                <Text style={styles.goalTitle} numberOfLines={1}>
-                    {goal.title}
-                </Text>
-                {isExpired && (
-                    <View style={styles.expiredBadge}>
-                        <Text style={styles.expiredBadgeText}>Süre Doldu</Text>
-                    </View>
-                )}
-                {pendingPledgeAmount > 0 && (
-                    <View style={styles.pledgeBadge}>
-                        <Text style={styles.pledgeBadgeText}>
-                            +{formatCurrency(pendingPledgeAmount)} söz
-                        </Text>
-                    </View>
-                )}
+
+                <View style={styles.badgesWrap}>
+                    <Text style={[styles.deadlineText, isExpired && styles.deadlineTextExpired]}>
+                        Son tarih: {new Date(goal.deadline).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </Text>
+                    {isExpired && (
+                        <View style={styles.expiredBadge}>
+                            <Text style={styles.expiredBadgeText}>Süre Doldu</Text>
+                        </View>
+                    )}
+                    {pendingPledgeAmount > 0 && (
+                        <View style={styles.pledgeBadge}>
+                            <Text style={styles.pledgeBadgeText}>
+                                +{formatCurrency(pendingPledgeAmount)} söz
+                            </Text>
+                        </View>
+                    )}
+                </View>
             </View>
 
-            <Text style={[styles.deadlineText, isExpired && styles.deadlineTextExpired]}>
-                Son tarih: {new Date(goal.deadline).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </Text>
-
-            <View style={styles.goalAmounts}>
-                <Text style={styles.goalCurrent}>{formatCurrencyShort(goal.current_amount)}</Text>
-                <Text style={styles.goalTarget}>/ {formatCurrencyShort(goal.target_amount)}</Text>
+            <View style={styles.goalAmountsRow}>
+                <View style={styles.goalAmountsLeft}>
+                    <Text style={styles.goalCurrent}>{formatCurrencyShort(goal.current_amount)}</Text>
+                    <Text style={styles.goalTarget}> / {formatCurrencyShort(goal.target_amount)}</Text>
+                </View>
             </View>
 
             <View style={styles.progressTrack}>
@@ -69,15 +72,8 @@ export default function GoalCard({ goal, onPress, pendingPledgeAmount = 0 }: Pro
 
 const styles = StyleSheet.create({
     goalCard: {
-        backgroundColor: COLORS.white,
-        borderRadius: 20,
         padding: 20,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 6,
-        elevation: 2,
+        backgroundColor: COLORS.white,
     },
     goalCardCompleted: {
         backgroundColor: COLORS.white,
@@ -105,21 +101,41 @@ const styles = StyleSheet.create({
     goalIconWrapExpired: {
         backgroundColor: '#E65100',
     },
-    goalTitle: {
+    goalHeaderContent: {
         flex: 1,
+        justifyContent: 'center',
+    },
+    goalTitle: {
         fontFamily: 'HankenGrotesk_600SemiBold',
         fontSize: 16,
         color: COLORS.textPrimary,
+        marginBottom: 2,
     },
-    goalAmounts: {
+    deadlineText: {
+        fontFamily: 'HankenGrotesk_400Regular',
+        fontSize: 12,
+        color: COLORS.textSecondary,
+    },
+    deadlineTextExpired: {
+        color: '#D32F2F',
+    },
+    badgesWrap: {
+        alignItems: 'flex-end',
+        gap: 6,
+    },
+    goalAmountsRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    goalAmountsLeft: {
         flexDirection: 'row',
         alignItems: 'baseline',
-        gap: 4,
-        marginBottom: 10,
     },
     goalCurrent: {
         fontFamily: 'HankenGrotesk_700Bold',
-        fontSize: 26,
+        fontSize: 22,
         color: COLORS.textPrimary,
     },
     goalTarget: {
@@ -127,16 +143,27 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: COLORS.textSecondary,
     },
+    goalPct: {
+        fontFamily: 'HankenGrotesk_700Bold',
+        fontSize: 18,
+        color: COLORS.primary,
+    },
+    goalPctCompleted: {
+        color: '#43A047',
+    },
+    goalPctExpired: {
+        color: '#E65100',
+    },
     progressTrack: {
-        height: 8,
+        height: 10,
         backgroundColor: COLORS.surfaceContainerHigh,
-        borderRadius: 4,
+        borderRadius: 5,
         overflow: 'hidden',
     },
     progressFill: {
         height: '100%',
         backgroundColor: COLORS.primary,
-        borderRadius: 4,
+        borderRadius: 5,
     },
     progressFillCompleted: {
         backgroundColor: '#43A047',
@@ -149,7 +176,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
-        marginLeft: 8,
     },
     expiredBadgeText: {
         color: '#D32F2F',
@@ -158,23 +184,13 @@ const styles = StyleSheet.create({
     },
     pledgeBadge: {
         backgroundColor: COLORS.primaryContainer,
-        borderRadius: 10,
+        borderRadius: 8,
         paddingHorizontal: 8,
-        paddingVertical: 3,
-        marginLeft: 6,
+        paddingVertical: 4,
     },
     pledgeBadgeText: {
         color: COLORS.primary,
         fontSize: 11,
-        fontFamily: 'HankenGrotesk_500Medium',
-    },
-    deadlineText: {
-        fontFamily: 'HankenGrotesk_500Medium',
-        fontSize: 13,
-        color: COLORS.textSecondary,
-        marginBottom: 12,
-    },
-    deadlineTextExpired: {
-        color: '#D32F2F',
+        fontFamily: 'HankenGrotesk_600SemiBold',
     },
 });
