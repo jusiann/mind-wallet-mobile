@@ -15,9 +15,13 @@ export const getContext = async (userId) => {
         cache.delete(userId);
 
     const now = new Date();
+    // Pledges depend on the calendar month
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    // AI analysis depends on 30-day rolling windows
+    const currentPeriodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const previousPeriodStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    const previousPeriodEnd = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const [currentMonthResult, previousMonthResult, goalsResult, categoriesResult, pledgesResult, userResult] =
         await Promise.all([
@@ -29,7 +33,7 @@ export const getContext = async (userId) => {
                  WHERE t.user_id = $1 AND t.transaction_timestamp >= $2
                  ORDER BY t.transaction_timestamp DESC
                  LIMIT 150`,
-                [userId, currentMonthStart],
+                [userId, currentPeriodStart],
             ),
             db.query(
                 `SELECT t.id, t.amount, t.type, t.description, t.transaction_timestamp,
@@ -39,7 +43,7 @@ export const getContext = async (userId) => {
                  WHERE t.user_id = $1 AND t.transaction_timestamp >= $2 AND t.transaction_timestamp <= $3
                  ORDER BY t.transaction_timestamp DESC
                  LIMIT 150`,
-                [userId, previousMonthStart, previousMonthEnd],
+                [userId, previousPeriodStart, previousPeriodEnd],
             ),
             db.query(
                 `SELECT id, title, target_amount, current_amount, deadline,

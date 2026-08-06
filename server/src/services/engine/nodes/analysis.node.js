@@ -34,14 +34,9 @@ function computeCashFlowForecast(currentMonthTx, user) {
     const currentExp = currentMonthTx.filter(t => t.type === 'EXPENSE');
     const totalSpent = currentExp.reduce((s, t) => s + Number(t.amount), 0);
     
-    const now = new Date();
-    const currentDay = now.getDate();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    
-    if (currentDay < 3) return null; // Too early to forecast
-    
-    const dailyBurnRate = totalSpent / currentDay;
-    const projectedTotal = dailyBurnRate * daysInMonth;
+    // With 30-day rolling data, totalSpent is already the 30-day projection.
+    const projectedTotal = totalSpent;
+    const dailyBurnRate = totalSpent / 30;
     
     const income = Number(user.monthly_income);
     if (projectedTotal > income * 0.9) {
@@ -171,14 +166,14 @@ export const analysisNode = async (state) => {
     let message;
     if (currentExpenses.length === 0) {
         const totalPreviousMonth = previousExpenses.reduce((s, t) => s + Number(t.amount), 0);
-        message = `Bu ay henüz harcama verisi yok. Geçen ay zorunlu olmayan kategorilerde toplam ${totalPreviousMonth.toLocaleString('tr-TR')} TL harcandı. Önerilen tasarruf: ${detectedSavings.toLocaleString('tr-TR')} TL (%20).`;
+        message = `Son 30 günde henüz harcama verisi yok. Önceki 30 günde zorunlu olmayan kategorilerde toplam ${totalPreviousMonth.toLocaleString('tr-TR')} TL harcandı. Önerilen tasarruf: ${detectedSavings.toLocaleString('tr-TR')} TL (%20).`;
     } else if (isFallback) {
         const totalCurrentMonth = currentExpenses.reduce((s, t) => s + Number(t.amount), 0);
-        message = `Önceki ay verisi yok; bu ay zorunlu olmayan kategorilerde toplam ${totalCurrentMonth.toLocaleString('tr-TR')} TL harcandı. Önerilen tasarruf: ${detectedSavings.toLocaleString('tr-TR')} TL (%20).`;
+        message = `Önceki 30 güne ait veri yok; son 30 günde zorunlu olmayan kategorilerde toplam ${totalCurrentMonth.toLocaleString('tr-TR')} TL harcandı. Önerilen tasarruf: ${detectedSavings.toLocaleString('tr-TR')} TL (%20).`;
     } else {
         message = deltas.length > 0
-            ? `Bu ay zorunlu olmayan bazı harcamalarında artış var. Toplamda ${detectedSavings.toLocaleString('tr-TR')} TL tasarruf edebilirsin.`
-            : `Bu ay harcamaların geçen ayla benzer, tespit edilen anlamlı artış yok. Harika gidiyorsun!`;
+            ? `Son 30 günde zorunlu olmayan bazı harcamalarında artış var. Toplamda ${detectedSavings.toLocaleString('tr-TR')} TL tasarruf edebilirsin.`
+            : `Son 30 gündeki harcamaların önceki 30 günle benzer, tespit edilen anlamlı artış yok. Harika gidiyorsun!`;
     }
 
     const subscriptions = findSubscriptions(currentMonthTx, previousMonthTx);
