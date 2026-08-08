@@ -1,6 +1,6 @@
 # Mind Wallet
 
-Mind Wallet, BTK Akademi Hackathon 2026 için geliştirilmiş yapay zeka destekli otonom finansal karar ve alışkanlık motorudur. Klasik gelir-gider takip uygulamalarından farklı olarak, kullanıcının harcamalarını analiz eder, tasarruf fırsatları sunar ve bütçeyi koruyan önleyici (guardrail) bir AI sistemine sahiptir.
+Mind Wallet, yapay zeka destekli otonom finansal karar ve alışkanlık motorudur. Klasik gelir-gider takip uygulamalarından farklı olarak, kullanıcının harcamalarını analiz eder, tasarruf fırsatları sunar ve bütçeyi koruyan önleyici (guardrail) bir AI sistemine sahiptir.
 
 ## 🇹🇷 Türkçe Dokümantasyon
 
@@ -72,7 +72,7 @@ npx expo start
 
 ## 🇺🇸 English Documentation
 
-Mind Wallet is an AI-powered autonomous financial decision and habit engine, built for the BTK Akademi Hackathon 2026. Unlike traditional expense trackers, it analyzes user spending, uncovers savings opportunities, and features a protective AI guardrail system to safeguard the budget.
+Mind Wallet is an AI-powered autonomous financial decision and habit engine. Unlike traditional expense trackers, it analyzes user spending, uncovers savings opportunities, and features a protective AI guardrail system to safeguard the budget.
 
 ### Key Features
 
